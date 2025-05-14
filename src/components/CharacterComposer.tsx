@@ -69,14 +69,27 @@ const CharacterComposer: React.FC = () => {
   };
 
   const handleGeneratedAsset = (asset: Asset) => {
-    // Sauvegarder l'asset généré
-    storageService.saveAsset(asset);
+    setIsGenerating(true);
     
-    // Ajouter l'asset au canvas
-    addAssetToCanvas(asset);
-    
-    setIsGenerating(false);
-    setShowAIModal(false);
+    try {
+      // Sauvegarder l'asset généré
+      storageService.saveAsset(asset);
+      
+      // Ajouter l'asset au canvas
+      addAssetToCanvas(asset);
+      
+      toast.success("Asset ajouté", {
+        description: "L'asset généré a été ajouté à votre canvas et sauvegardé dans votre bibliothèque."
+      });
+    } catch (error) {
+      console.error("Erreur lors de l'ajout de l'asset:", error);
+      toast.error("Erreur", {
+        description: "Une erreur s'est produite lors de l'ajout de l'asset au canvas."
+      });
+    } finally {
+      setIsGenerating(false);
+      setShowAIModal(false);
+    }
   };
 
   return (

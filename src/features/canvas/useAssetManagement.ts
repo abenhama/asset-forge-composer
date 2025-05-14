@@ -34,11 +34,16 @@ export const useAssetManagement = (
         imgElement.src = asset.url;
       });
 
+      // Déterminer les coordonnées et l'échelle à partir des suggestions d'IA ou utiliser des valeurs par défaut
+      const left = asset.positioning?.suggestedX || (fabricCanvas.width ? fabricCanvas.width / 2 - img.width / 4 : 150);
+      const top = asset.positioning?.suggestedY || (fabricCanvas.height ? fabricCanvas.height / 2 - img.height / 4 : 150);
+      const scale = asset.positioning?.suggestedScale || 0.5;
+
       const fabricImage = new FabricImage(img, {
-        left: fabricCanvas.width ? fabricCanvas.width / 2 - img.width / 4 : 150,
-        top: fabricCanvas.height ? fabricCanvas.height / 2 - img.height / 4 : 150,
-        scaleX: 0.5,
-        scaleY: 0.5,
+        left,
+        top,
+        scaleX: scale,
+        scaleY: scale,
       });
 
       // Add metadata to the object

@@ -12,6 +12,7 @@ import { generateAssetWithAI } from '@/services/aiGenerationService';
 import { toast } from 'sonner';
 import BaseDollPreview from './ai-generation/BaseDollPreview';
 import AIGenerationForm, { GenerationFormValues } from './ai-generation/AIGenerationForm';
+import ImageCropper from './ImageCropper';
 
 interface AIGenerationModalProps {
   open: boolean;
@@ -25,6 +26,8 @@ const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGener
   const [savedApiKey, setSavedApiKey] = useState<string | null>(
     localStorage.getItem('openai_api_key')
   );
+  const [generatedAsset, setGeneratedAsset] = useState<Asset | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
 
   const handleGenerate = async (data: GenerationFormValues) => {
     if (!baseDoll) {
@@ -45,7 +48,7 @@ const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGener
     });
     
     try {
-      const generatedAsset = await generateAssetWithAI(
+      const asset = await generateAssetWithAI(
         {
           assetType: data.assetType,
           prompt: data.prompt,
@@ -55,11 +58,11 @@ const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGener
         data.apiKey
       );
       
-      if (generatedAsset) {
-        onGenerate(generatedAsset);
-        onOpenChange(false);
+      if (asset) {
+        setGeneratedAsset(asset);
+        setShowCropper(true);
         toast.success("Asset généré avec succès", {
-          description: `Un nouveau ${data.assetType} a été créé et adapté à votre personnage.`,
+          description: "Vous pouvez maintenant recadrer l'image pour optimiser la transparence.",
         });
       }
     } catch (error) {
@@ -72,35 +75,70 @@ const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGener
     }
   };
 
+  const handleCropComplete = (croppedImageUrl: string) => {
+    if (!generatedAsset) return;
+    
+    // Créer une copie de l'asset avec l'image recadrée
+    const croppedAsset: Asset = {
+      ...generatedAsset,
+      url: croppedImageUrl,
+      thumbnailUrl: croppedImageUrl
+    };
+    
+    // Envoyer l'asset recadré
+    onGenerate(croppedAsset);
+    
+    // Fermer le modal
+    onOpenChange(false);
+    
+    // Réinitialiser l'état
+    setGeneratedAsset(null);
+    
+    toast.success("Asset ajouté au canvas", {
+      description: "L'asset recadré a été ajouté à votre composition.",
+    });
+  };
+
   const handleClearApiKey = () => {
     localStorage.removeItem('openai_api_key');
     setSavedApiKey(null);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Génération d'assets avec IA</DialogTitle>
-          <DialogDescription>
-            Créez de nouveaux assets adaptés à votre personnage en utilisant l'intelligence artificielle.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Génération d'assets avec IA</DialogTitle>
+            <DialogDescription>
+              Créez de nouveaux assets adaptés à votre personnage en utilisant l'intelligence artificielle.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div>
-          <BaseDollPreview baseDoll={baseDoll} />
-          
-          <AIGenerationForm 
-            onSubmit={handleGenerate}
-            isGenerating={isGenerating}
-            savedApiKey={savedApiKey}
-            onClearApiKey={handleClearApiKey}
-            onCancel={() => onOpenChange(false)}
-            disableSubmit={!baseDoll}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div>
+            <BaseDollPreview baseDoll={baseDoll} />
+            
+            <AIGenerationForm 
+              onSubmit={handleGenerate}
+              isGenerating={isGenerating}
+              savedApiKey={savedApiKey}
+              onClearApiKey={handleClearApiKey}
+              onCancel={() => onOpenChange(false)}
+              disableSubmit={!baseDoll}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {generatedAsset && (
+        <ImageCropper 
+          open={showCropper}
+          onOpenChange={setShowCropper}
+          imageUrl={generatedAsset.url}
+          onCropComplete={handleCropComplete}
+        />
+      )}
+    </>
   );
 };
 

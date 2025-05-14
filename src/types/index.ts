@@ -1,4 +1,3 @@
-
 export type AssetType = 'base-doll' | 'hair' | 'clothing' | 'accessory' | 'facial-hair';
 
 export type AssetStyle = 'cartoon' | 'realistic' | 'anime';
@@ -14,6 +13,11 @@ export interface Asset {
   colors: string[];
   dateCreated: string;
   dateModified: string;
+  positioning?: {
+    suggestedX: number;
+    suggestedY: number;
+    suggestedScale: number;
+  };
 }
 
 export interface UploadProgress {
