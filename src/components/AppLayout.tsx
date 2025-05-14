@@ -3,7 +3,7 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Upload, Gallery, Layers, Filter, Search } from "lucide-react";
+import { Upload, GalleryHorizontal, Layers, Filter, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const AppLayout = () => {

@@ -93,6 +93,7 @@ const CharacterComposer = () => {
     const dataURL = fabricCanvas.toDataURL({
       format: 'png',
       quality: 1,
+      multiplier: 1, // Add the required multiplier property
     });
     
     const link = document.createElement('a');

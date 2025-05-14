@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Upload, Gallery, Layers } from "lucide-react";
+import { Upload, GalleryHorizontal, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NavigationTabs = () => {
@@ -31,7 +30,7 @@ const NavigationTabs = () => {
           size="icon" 
           className={cn("rounded-full", getActiveClass("/gallery"))}
         >
-          <Gallery className="h-5 w-5" />
+          <GalleryHorizontal className="h-5 w-5" />
         </Button>
       </NavLink>
       <NavLink to="/composer" className="flex justify-center p-2">
