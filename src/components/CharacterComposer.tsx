@@ -7,11 +7,18 @@ import LayersPanel from './LayersPanel';
 import ObjectControls from './ObjectControls';
 import CanvasControls from './CanvasControls';
 import AssetsSidebar from './AssetsSidebar';
+import CharacterSaveModal from './CharacterSaveModal';
+import { SavedCharacter } from '@/types';
+import { storageService } from '@/utils/storageService';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Save } from 'lucide-react';
 
 const CharacterComposer: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [tempThumbnail, setTempThumbnail] = useState<string | undefined>(undefined);
   
   const {
     canvasRef,
@@ -30,14 +37,48 @@ const CharacterComposer: React.FC = () => {
     moveLayer,
     updateObjectPosition,
     updateObjectScale,
-    updateObjectAngle
+    updateObjectAngle,
+    saveCharacter
   } = useCanvas(500, 600);
+
+  const handleSaveClick = () => {
+    if (layers.length === 0) {
+      toast("Aucun élément à sauvegarder", {
+        description: "Ajoutez d'abord des éléments à votre personnage.",
+      });
+      return;
+    }
+
+    // Capture the current canvas thumbnail for the save modal
+    if (canvasRef.current) {
+      setTempThumbnail(canvasRef.current.toDataURL());
+    }
+    
+    setShowSaveModal(true);
+  };
+
+  const handleSaveCharacter = (name: string, description: string): SavedCharacter | null => {
+    const character = saveCharacter(name, description);
+    
+    if (character) {
+      storageService.saveCharacter(character);
+      return character;
+    }
+    
+    return null;
+  };
 
   return (
     <div className="h-full flex overflow-hidden">
       {/* Left Panel - Canvas */}
       <div className="flex-1 flex flex-col p-6 overflow-auto border-r">
-        <h2 className="text-2xl font-bold mb-6">Compositeur de Personnages</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Compositeur de Personnages</h2>
+          <Button onClick={handleSaveClick} variant="outline">
+            <Save className="h-4 w-4 mr-2" />
+            Sauvegarder
+          </Button>
+        </div>
         
         <CanvasControls
           onZoomIn={() => zoomCanvas(true)}
@@ -104,6 +145,14 @@ const CharacterComposer: React.FC = () => {
             // Dans une implémentation réelle, on ajouterait l'asset généré au canvas ici
           }, 2000);
         }}
+      />
+      
+      {/* Modal de sauvegarde du personnage */}
+      <CharacterSaveModal
+        open={showSaveModal}
+        onOpenChange={setShowSaveModal}
+        onSave={handleSaveCharacter}
+        thumbnail={tempThumbnail}
       />
     </div>
   );

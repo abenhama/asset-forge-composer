@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Canvas, Image as FabricImage, Object as FabricObject } from 'fabric';
 import { v4 as uuidv4 } from 'uuid';
@@ -276,15 +275,16 @@ export const useCanvas = (width: number = 500, height: number = 600) => {
     // Échanger les calques
     [newLayers[index], newLayers[newIndex]] = [newLayers[newIndex], newLayers[index]];
     
-    // Mettre à jour l'ordre dans le canvas si nécessaire
+    // Mettre à jour l'ordre dans le canvas
     if (fabricCanvas) {
       const obj1 = newLayers[index].object;
       const obj2 = newLayers[newIndex].object;
       
       if (direction === 'up') {
-        obj1.bringForward();
+        // Utiliser l'API canvas pour modifier l'ordre visuel
+        fabricCanvas.moveTo(obj1, fabricCanvas.getObjects().indexOf(obj2));
       } else {
-        obj1.sendBackwards();
+        fabricCanvas.moveTo(obj1, fabricCanvas.getObjects().indexOf(obj2));
       }
       
       fabricCanvas.renderAll();
@@ -329,6 +329,47 @@ export const useCanvas = (width: number = 500, height: number = 600) => {
     }));
   }, [fabricCanvas, selectedObject]);
 
+  // Save the current character composition
+  const saveCharacter = useCallback((name: string, description?: string) => {
+    if (!fabricCanvas) return null;
+    
+    const dataURL = fabricCanvas.toDataURL({
+      format: 'png',
+      quality: 1,
+      multiplier: 1,
+    });
+    
+    const layerData = layers.map(layer => ({
+      id: layer.id,
+      name: layer.name,
+      type: layer.type,
+      visible: layer.visible,
+      locked: layer.locked,
+      assetId: (layer.object as any).data?.assetId || null,
+      position: {
+        x: layer.object.left || 0,
+        y: layer.object.top || 0
+      },
+      scale: {
+        x: layer.object.scaleX || 1,
+        y: layer.object.scaleY || 1
+      },
+      angle: layer.object.angle || 0
+    }));
+    
+    const character = {
+      id: uuidv4(),
+      name,
+      description: description || '',
+      thumbnail: dataURL,
+      layers: layerData,
+      dateCreated: new Date().toISOString(),
+      dateModified: new Date().toISOString(),
+    };
+    
+    return character;
+  }, [fabricCanvas, layers]);
+
   return {
     canvasRef,
     fabricCanvas,
@@ -349,6 +390,7 @@ export const useCanvas = (width: number = 500, height: number = 600) => {
     updateObjectPosition,
     updateObjectScale,
     updateObjectAngle,
-    setSelectedBaseDoll
+    setSelectedBaseDoll,
+    saveCharacter
   };
 };

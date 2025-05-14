@@ -53,3 +53,39 @@ export interface AIGeneratedAsset extends Asset {
   originalPrompt: string;
   basedOnAssetId: string;
 }
+
+export interface SavedCharacter {
+  id: string;
+  name: string;
+  description: string;
+  thumbnail: string;
+  layers: {
+    id: string;
+    name: string;
+    type: string;
+    visible: boolean;
+    locked: boolean;
+    assetId: string | null;
+    position: {
+      x: number;
+      y: number;
+    };
+    scale: {
+      x: number;
+      y: number;
+    };
+    angle: number;
+  }[];
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface SavedCharacterPreview {
+  id: string;
+  name: string;
+  description: string;
+  thumbnail: string;
+  layerCount: number;
+  dateCreated: string;
+  dateModified: string;
+}
