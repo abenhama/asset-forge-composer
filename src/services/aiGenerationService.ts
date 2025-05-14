@@ -51,6 +51,8 @@ export const generateAssetWithAI = async (
       response_format: "url"
     };
 
+    console.log("Envoi de la requête à l'API DALL-E:", payload);
+
     // Appel à l'API
     const response = await fetch(AI_API_ENDPOINT, {
       method: "POST",
@@ -67,6 +69,7 @@ export const generateAssetWithAI = async (
     }
 
     const data = await response.json();
+    console.log("Réponse de l'API DALL-E:", data);
     const imageUrl = data.data[0].url;
 
     // Conversion de l'asset généré au format attendu par l'application
@@ -82,7 +85,8 @@ export const generateAssetWithAI = async (
       dateCreated: new Date().toISOString(),
       dateModified: new Date().toISOString(),
     };
-
+    
+    console.log("Asset généré:", newAsset);
     return newAsset;
   } catch (error) {
     console.error("Erreur lors de la génération d'assets:", error);

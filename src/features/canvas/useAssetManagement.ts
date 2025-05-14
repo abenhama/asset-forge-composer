@@ -17,12 +17,21 @@ export const useAssetManagement = (
     if (!fabricCanvas) return;
 
     try {
+      // Créer un blob à partir de l'URL pour contourner les problèmes CORS
+      // souvent rencontrés avec les images générées par des API comme OpenAI
+      const response = await fetch(asset.url, { mode: 'cors' });
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
       const img = await new Promise<HTMLImageElement>((resolve, reject) => {
         const imgElement = new Image();
         imgElement.crossOrigin = 'anonymous';
-        imgElement.src = asset.url;
+        imgElement.src = blobUrl;
         imgElement.onload = () => resolve(imgElement);
-        imgElement.onerror = reject;
+        imgElement.onerror = (error) => {
+          console.error("Erreur de chargement de l'image:", error);
+          reject(new Error("Impossible de charger l'image"));
+        };
       });
 
       const fabricImage = new FabricImage(img, {
@@ -52,13 +61,16 @@ export const useAssetManagement = (
       setSelectedObject(fabricImage);
       updateObjectProperties(fabricImage);
 
+      // Libérer la mémoire en révoquant l'URL du blob
+      URL.revokeObjectURL(blobUrl);
+
       toast("Asset ajouté", {
         description: `${asset.name} a été ajouté au canvas.`,
       });
     } catch (error) {
       console.error("Erreur lors du chargement de l'image:", error);
-      toast("Erreur", {
-        description: "Impossible d'ajouter l'asset au canvas.",
+      toast.error("Erreur", {
+        description: "Impossible d'ajouter l'asset au canvas. Vérifiez l'URL de l'image.",
       });
     }
   }, [fabricCanvas, addLayer, setSelectedObject, updateObjectProperties]);
