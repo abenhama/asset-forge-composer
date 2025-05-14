@@ -8,7 +8,7 @@ import ObjectControls from './ObjectControls';
 import CanvasControls from './CanvasControls';
 import AssetsSidebar from './AssetsSidebar';
 import CharacterSaveModal from './CharacterSaveModal';
-import { SavedCharacter } from '@/types';
+import { SavedCharacter, Asset } from '@/types';
 import { storageService } from '@/utils/storageService';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -66,6 +66,17 @@ const CharacterComposer: React.FC = () => {
     }
     
     return null;
+  };
+
+  const handleGeneratedAsset = (asset: Asset) => {
+    // Sauvegarder l'asset généré
+    storageService.saveAsset(asset);
+    
+    // Ajouter l'asset au canvas
+    addAssetToCanvas(asset);
+    
+    setIsGenerating(false);
+    setShowAIModal(false);
   };
 
   return (
@@ -135,16 +146,7 @@ const CharacterComposer: React.FC = () => {
         open={showAIModal} 
         onOpenChange={setShowAIModal}
         baseDoll={selectedBaseDoll}
-        onGenerate={(assetType) => {
-          setIsGenerating(true);
-          // Simulation d'une génération IA
-          setTimeout(() => {
-            setIsGenerating(false);
-            setShowAIModal(false);
-            toast.success(`Asset ${assetType} généré avec succès!`);
-            // Dans une implémentation réelle, on ajouterait l'asset généré au canvas ici
-          }, 2000);
-        }}
+        onGenerate={handleGeneratedAsset}
       />
       
       {/* Modal de sauvegarde du personnage */}

@@ -25,38 +25,78 @@ import {
   FormLabel
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { AssetType, Asset } from "@/types";
-import { Wand2 } from 'lucide-react';
+import { AssetType, Asset, AssetStyle } from "@/types";
+import { Wand2, Key } from 'lucide-react';
 import { useForm } from "react-hook-form";
+import { generateAssetWithAI } from '@/services/aiGenerationService';
+import { toast } from 'sonner';
 
 interface AIGenerationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   baseDoll: Asset | null;
-  onGenerate: (assetType: AssetType, prompt?: string) => void;
+  onGenerate: (asset: Asset) => void;
 }
 
 type GenerationFormValues = {
   assetType: AssetType;
   prompt: string;
-  style: string;
+  style: AssetStyle;
+  apiKey: string;
 };
 
 const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGenerationModalProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [savedApiKey, setSavedApiKey] = useState<string | null>(
+    localStorage.getItem('openai_api_key')
+  );
   
   const form = useForm<GenerationFormValues>({
     defaultValues: {
       assetType: 'hair',
       prompt: '',
-      style: 'cartoon'
+      style: 'cartoon',
+      apiKey: savedApiKey || '',
     },
   });
 
-  const handleGenerate = (data: GenerationFormValues) => {
+  const handleGenerate = async (data: GenerationFormValues) => {
+    if (!baseDoll) {
+      toast.error("Aucun personnage de base sélectionné");
+      return;
+    }
+
+    // Sauvegarder la clé API pour une utilisation future
+    if (data.apiKey) {
+      localStorage.setItem('openai_api_key', data.apiKey);
+      setSavedApiKey(data.apiKey);
+    }
+
     setIsGenerating(true);
-    onGenerate(data.assetType, data.prompt);
+    
+    try {
+      const generatedAsset = await generateAssetWithAI(
+        {
+          assetType: data.assetType,
+          prompt: data.prompt,
+          style: data.style,
+          baseDollUrl: baseDoll.url,
+        },
+        data.apiKey
+      );
+      
+      if (generatedAsset) {
+        onGenerate(generatedAsset);
+        onOpenChange(false);
+        toast.success("Asset généré avec succès", {
+          description: `Un nouveau ${data.assetType} a été créé.`,
+        });
+      }
+    } catch (error) {
+      console.error("Erreur lors de la génération:", error);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -92,6 +132,41 @@ const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGener
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleGenerate)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="apiKey"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Clé API OpenAI</FormLabel>
+                    <div className="flex space-x-2">
+                      <FormControl>
+                        <Input 
+                          type="password"
+                          placeholder="sk-..." 
+                          {...field}
+                        />
+                      </FormControl>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        title="Effacer la clé API sauvegardée"
+                        onClick={() => {
+                          localStorage.removeItem('openai_api_key');
+                          setSavedApiKey(null);
+                          form.setValue('apiKey', '');
+                        }}
+                      >
+                        <Key className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <FormDescription>
+                      Votre clé API sera stockée localement
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+              
               <FormField
                 control={form.control}
                 name="assetType"
@@ -148,7 +223,7 @@ const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGener
                 name="prompt"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Prompt de génération (optionnel)</FormLabel>
+                    <FormLabel>Prompt de génération</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="Ex: Cheveux courts bouclés rouges..." 
@@ -172,7 +247,7 @@ const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGener
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={isGenerating || !baseDoll}
+                  disabled={isGenerating || !baseDoll || !form.watch('apiKey')}
                 >
                   {isGenerating ? (
                     <span className="flex items-center">
