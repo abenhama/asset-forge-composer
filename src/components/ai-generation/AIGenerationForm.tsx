@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useForm } from "react-hook-form";
-import { Wand2 } from 'lucide-react';
+import { Wand2, Sparkles } from 'lucide-react';
 import { AssetType, AssetStyle } from "@/types";
 import { Button } from "@/components/ui/button";
 import { 
@@ -120,15 +120,16 @@ const AIGenerationForm = ({
           name="prompt"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Prompt de génération</FormLabel>
+              <FormLabel>Prompt de génération (optionnel)</FormLabel>
               <FormControl>
                 <Input 
                   placeholder="Ex: Cheveux courts bouclés rouges..." 
                   {...field} 
                 />
               </FormControl>
-              <FormDescription>
-                Décrivez l'asset que vous souhaitez générer
+              <FormDescription className="flex items-center text-blue-600">
+                <Sparkles className="w-3 h-3 mr-1" />
+                L'IA analysera automatiquement votre personnage base pour adapter le résultat
               </FormDescription>
             </FormItem>
           )}
@@ -152,7 +153,7 @@ const AIGenerationForm = ({
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Génération...
+                Analyse et génération...
               </span>
             ) : (
               <span className="flex items-center">

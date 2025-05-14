@@ -52,13 +52,14 @@ const CanvasControls: React.FC<CanvasControlsProps> = ({
           Effacer
         </Button>
         <Button
-          variant="outline"
+          variant={selectedBaseDoll ? "default" : "outline"}
           size="sm"
           onClick={handleGenerateAssets}
           disabled={!selectedBaseDoll || isGenerating}
+          className={selectedBaseDoll ? "bg-blue-600 hover:bg-blue-700" : ""}
         >
           <Wand2 className="h-4 w-4 mr-1" />
-          Générer avec IA
+          Générer asset adapté
         </Button>
         <Button size="sm" onClick={onDownload}>
           <Download className="h-4 w-4 mr-1" />

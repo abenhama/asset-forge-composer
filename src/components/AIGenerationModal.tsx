@@ -40,6 +40,10 @@ const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGener
 
     setIsGenerating(true);
     
+    toast("Analyse en cours...", {
+      description: "Analyse du personnage de base avant la génération de l'asset...",
+    });
+    
     try {
       const generatedAsset = await generateAssetWithAI(
         {
@@ -55,7 +59,7 @@ const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGener
         onGenerate(generatedAsset);
         onOpenChange(false);
         toast.success("Asset généré avec succès", {
-          description: `Un nouveau ${data.assetType} a été créé.`,
+          description: `Un nouveau ${data.assetType} a été créé et adapté à votre personnage.`,
         });
       }
     } catch (error) {
@@ -79,7 +83,7 @@ const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGener
         <DialogHeader>
           <DialogTitle>Génération d'assets avec IA</DialogTitle>
           <DialogDescription>
-            Créez de nouveaux assets pour votre personnage en utilisant l'intelligence artificielle.
+            Créez de nouveaux assets adaptés à votre personnage en utilisant l'intelligence artificielle.
           </DialogDescription>
         </DialogHeader>
 

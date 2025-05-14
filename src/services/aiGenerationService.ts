@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Configuration pour l'API d'IA
 const AI_API_ENDPOINT = "https://api.openai.com/v1/images/generations";
+const AI_CHAT_API_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
 // Types pour les requêtes et réponses
 interface AIGenerationRequest {
@@ -19,6 +20,63 @@ interface AIGenerationResponse {
   thumbnailUrl: string;
 }
 
+// Fonction pour extraire les caractéristiques de la base doll via l'API OpenAI
+const analyzeBaseDoll = async (
+  baseDollUrl: string,
+  apiKey: string
+): Promise<string> => {
+  try {
+    console.log("Analyse de la base doll pour une génération optimisée...");
+    
+    const response = await fetch(AI_CHAT_API_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "Vous êtes un assistant spécialisé dans l'analyse d'images et la création de prompts pour la génération d'assets compatibles."
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Analysez cette image de personnage et décrivez brièvement ses caractéristiques principales (style artistique, morphologie, genre, etc.). Formulez ensuite une courte description pour générer des assets complémentaires."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: baseDollUrl
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 300
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Erreur lors de l'analyse de l'image");
+    }
+
+    const data = await response.json();
+    const analysisResult = data.choices[0]?.message?.content;
+    console.log("Analyse de la base doll:", analysisResult);
+    
+    return analysisResult || "";
+  } catch (error) {
+    console.error("Erreur lors de l'analyse de la base doll:", error);
+    return ""; // En cas d'erreur, retourner une chaîne vide
+  }
+};
+
 export const generateAssetWithAI = async (
   request: AIGenerationRequest,
   apiKey?: string
@@ -31,8 +89,22 @@ export const generateAssetWithAI = async (
   }
   
   try {
-    // Construire un prompt plus détaillé basé sur les paramètres
+    // Analyse de la base doll si une URL est fournie
+    let dollAnalysis = "";
+    if (request.baseDollUrl) {
+      toast("Analyse en cours", {
+        description: "Analyse du personnage de base pour générer un asset adapté..."
+      });
+      
+      dollAnalysis = await analyzeBaseDoll(request.baseDollUrl, apiKey);
+    }
+    
+    // Construire un prompt plus détaillé basé sur les paramètres et l'analyse
     let enhancedPrompt = `Generate a ${request.style} style ${request.assetType}`;
+    
+    if (dollAnalysis) {
+      enhancedPrompt += ` that matches the following character: ${dollAnalysis}`;
+    }
     
     if (request.prompt) {
       enhancedPrompt += ` with these specifications: ${request.prompt}`;
