@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState } from 'react';
-import { Canvas, Object as FabricObject } from 'fabric';
+import { Canvas } from 'fabric';
 
 export const useCanvasInitialization = (width: number = 500, height: number = 600) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -14,6 +14,7 @@ export const useCanvasInitialization = (width: number = 500, height: number = 60
       width,
       height,
       backgroundColor: '#f8f9fa',
+      preserveObjectStacking: true, // Ensure objects stay in the stacking order we define
     });
 
     setFabricCanvas(canvas);

@@ -52,7 +52,9 @@ export const useCanvasOperations = (
   const zoomCanvas = useCallback((zoomIn: boolean) => {
     if (!fabricCanvas) return;
     const zoom = fabricCanvas.getZoom();
-    fabricCanvas.setZoom(zoomIn ? zoom * 1.1 : zoom * 0.9);
+    const newZoom = zoomIn ? zoom * 1.1 : zoom * 0.9;
+    fabricCanvas.setZoom(newZoom);
+    fabricCanvas.renderAll();
   }, [fabricCanvas]);
 
   // Save character

@@ -17,20 +17,23 @@ export const useObjectManagement = (fabricCanvas: Canvas | null) => {
 
     setObjectProperties({
       position: { 
-        x: obj.left || 0, 
-        y: obj.top || 0 
+        x: Math.round(obj.left || 0), 
+        y: Math.round(obj.top || 0) 
       },
       scale: { 
         x: obj.scaleX || 1, 
         y: obj.scaleY || 1 
       },
-      angle: obj.angle || 0
+      angle: Math.round(obj.angle || 0)
     });
   }, []);
 
   // Handle object selection
   const handleObjectSelection = useCallback((e: any) => {
-    if (!e.selected || e.selected.length === 0) return;
+    if (!e.selected || e.selected.length === 0) {
+      setSelectedObject(null);
+      return null;
+    }
     
     const obj = e.selected[0];
     setSelectedObject(obj);

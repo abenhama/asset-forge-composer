@@ -5,7 +5,6 @@ import { useLayerManagement } from '@/features/canvas/useLayerManagement';
 import { useObjectManagement } from '@/features/canvas/useObjectManagement';
 import { useAssetManagement } from '@/features/canvas/useAssetManagement';
 import { useCanvasOperations } from '@/features/canvas/useCanvasOperations';
-import { Asset } from '@/types';
 
 export const useCanvas = (width: number = 500, height: number = 600) => {
   // Initialize canvas
@@ -56,7 +55,7 @@ export const useCanvas = (width: number = 500, height: number = 600) => {
   useEffect(() => {
     if (!fabricCanvas) return;
 
-    fabricCanvas.on('selection:created', (e) => {
+    const handleSelectionCreated = (e: any) => {
       const obj = handleObjectSelection(e);
       if (obj) {
         const layer = layers.find(layer => layer.object === obj);
@@ -64,9 +63,9 @@ export const useCanvas = (width: number = 500, height: number = 600) => {
           setActiveLayer(layer.id);
         }
       }
-    });
+    };
     
-    fabricCanvas.on('selection:updated', (e) => {
+    const handleSelectionUpdated = (e: any) => {
       const obj = handleObjectSelection(e);
       if (obj) {
         const layer = layers.find(layer => layer.object === obj);
@@ -74,39 +73,35 @@ export const useCanvas = (width: number = 500, height: number = 600) => {
           setActiveLayer(layer.id);
         }
       }
-    });
+    };
     
-    fabricCanvas.on('selection:cleared', () => {
+    const handleSelectionCleared = () => {
       setSelectedObject(null);
       setActiveLayer(null);
-    });
+    };
 
-    fabricCanvas.on('object:modified', (e) => {
+    const handleObjectModified = (e: any) => {
       if (e.target) {
         updateObjectProperties(e.target);
       }
-    });
+    };
 
-    fabricCanvas.on('object:moving', (e) => {
-      if (e.target) {
-        updateObjectProperties(e.target);
-      }
-    });
-
-    fabricCanvas.on('object:scaling', (e) => {
-      if (e.target) {
-        updateObjectProperties(e.target);
-      }
-    });
-
-    fabricCanvas.on('object:rotating', (e) => {
-      if (e.target) {
-        updateObjectProperties(e.target);
-      }
-    });
+    fabricCanvas.on('selection:created', handleSelectionCreated);
+    fabricCanvas.on('selection:updated', handleSelectionUpdated);
+    fabricCanvas.on('selection:cleared', handleSelectionCleared);
+    fabricCanvas.on('object:modified', handleObjectModified);
+    fabricCanvas.on('object:moving', handleObjectModified);
+    fabricCanvas.on('object:scaling', handleObjectModified);
+    fabricCanvas.on('object:rotating', handleObjectModified);
 
     return () => {
-      fabricCanvas.off();
+      fabricCanvas.off('selection:created', handleSelectionCreated);
+      fabricCanvas.off('selection:updated', handleSelectionUpdated);
+      fabricCanvas.off('selection:cleared', handleSelectionCleared);
+      fabricCanvas.off('object:modified', handleObjectModified);
+      fabricCanvas.off('object:moving', handleObjectModified);
+      fabricCanvas.off('object:scaling', handleObjectModified);
+      fabricCanvas.off('object:rotating', handleObjectModified);
     };
   }, [fabricCanvas, handleObjectSelection, layers, setActiveLayer, updateObjectProperties, setSelectedObject]);
 

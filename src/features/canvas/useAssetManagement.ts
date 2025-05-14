@@ -26,8 +26,8 @@ export const useAssetManagement = (
       });
 
       const fabricImage = new FabricImage(img, {
-        left: 150,
-        top: 150,
+        left: fabricCanvas.width ? fabricCanvas.width / 2 - img.width / 4 : 150,
+        top: fabricCanvas.height ? fabricCanvas.height / 2 - img.height / 4 : 150,
         scaleX: 0.5,
         scaleY: 0.5,
       });
