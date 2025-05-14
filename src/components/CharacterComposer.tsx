@@ -10,15 +10,20 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Layers, Download, Trash, ZoomIn, ZoomOut } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Layers, Download, Trash, ZoomIn, ZoomOut, Wand2 } from 'lucide-react';
 import { mockAssets } from "@/data/mockData";
 import { Asset, AssetType } from "@/types";
 import { toast } from 'sonner';
+import AIGenerationModal from './AIGenerationModal';
 
 const CharacterComposer = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<Canvas | null>(null);
   const [activeTab, setActiveTab] = useState<AssetType>('base-doll');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [selectedBaseDoll, setSelectedBaseDoll] = useState<Asset | null>(null);
 
   // Filter assets by type
   const getAssetsByType = (type: AssetType) => {
@@ -66,6 +71,11 @@ const CharacterComposer = () => {
       fabricCanvas.setActiveObject(fabricImage);
       fabricCanvas.renderAll();
 
+      // Si l'asset est un base-doll, le stocker pour la génération d'IA
+      if (asset.type === 'base-doll') {
+        setSelectedBaseDoll(asset);
+      }
+
       toast("Asset ajouté", {
         description: `${asset.name} a été ajouté au canvas.`,
       });
@@ -82,6 +92,7 @@ const CharacterComposer = () => {
     fabricCanvas.clear();
     fabricCanvas.backgroundColor = '#f8f9fa';
     fabricCanvas.renderAll();
+    setSelectedBaseDoll(null);
     toast("Canvas effacé", {
       description: "Tous les assets ont été supprimés du canvas.",
     });
@@ -93,7 +104,7 @@ const CharacterComposer = () => {
     const dataURL = fabricCanvas.toDataURL({
       format: 'png',
       quality: 1,
-      multiplier: 1, // Add the required multiplier property
+      multiplier: 1, // Required property
     });
     
     const link = document.createElement('a');
@@ -106,6 +117,17 @@ const CharacterComposer = () => {
     toast("Téléchargement réussi", {
       description: "Votre composition a été téléchargée.",
     });
+  };
+
+  const handleGenerateAssets = () => {
+    if (!selectedBaseDoll) {
+      toast("Erreur", {
+        description: "Veuillez d'abord ajouter un personnage de base au canvas.",
+      });
+      return;
+    }
+
+    setShowAIModal(true);
   };
 
   const zoomIn = () => {
@@ -141,6 +163,15 @@ const CharacterComposer = () => {
             <Button variant="outline" size="sm" onClick={clearCanvas}>
               <Trash className="h-4 w-4 mr-1" />
               Effacer
+            </Button>
+            <Button 
+              variant="outline"
+              size="sm" 
+              onClick={handleGenerateAssets}
+              disabled={!selectedBaseDoll || isGenerating}
+            >
+              <Wand2 className="h-4 w-4 mr-1" />
+              Générer avec IA
             </Button>
             <Button size="sm" onClick={downloadCanvas}>
               <Download className="h-4 w-4 mr-1" />
@@ -208,6 +239,23 @@ const CharacterComposer = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de génération d'IA */}
+      <AIGenerationModal 
+        open={showAIModal} 
+        onOpenChange={setShowAIModal}
+        baseDoll={selectedBaseDoll}
+        onGenerate={(assetType) => {
+          setIsGenerating(true);
+          // Simulation d'une génération IA
+          setTimeout(() => {
+            setIsGenerating(false);
+            setShowAIModal(false);
+            toast.success(`Asset ${assetType} généré avec succès!`);
+            // Dans une implémentation réelle, on ajouterait l'asset généré au canvas ici
+          }, 2000);
+        }}
+      />
     </div>
   );
 };

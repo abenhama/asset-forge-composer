@@ -41,3 +41,15 @@ export interface CanvasObject {
   };
   angle: number;
 }
+
+export interface AIGenerationOptions {
+  assetType: AssetType;
+  style: AssetStyle;
+  prompt?: string;
+  baseDollId: string;
+}
+
+export interface AIGeneratedAsset extends Asset {
+  originalPrompt: string;
+  basedOnAssetId: string;
+}
