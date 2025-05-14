@@ -1,17 +1,17 @@
 
 import React from 'react';
 import NavigationTabs from '@/components/NavigationTabs';
-import UploadArea from '@/components/UploadArea';
+import AssetGallery from '@/components/AssetGallery';
 
-const Index = () => {
+const Gallery = () => {
   return (
     <div className="flex h-full">
       <NavigationTabs />
       <div className="flex-1 overflow-auto">
-        <UploadArea />
+        <AssetGallery />
       </div>
     </div>
   );
 };
 
-export default Index;
+export default Gallery;
