@@ -46,7 +46,7 @@ const analyzeBaseDoll = async (
             content: [
               {
                 type: "text",
-                text: "Analysez cette image de personnage et décrivez brièvement ses caractéristiques principales (style artistique, morphologie, genre, etc.). Formulez ensuite une courte description pour générer des assets complémentaires."
+                text: "Analysez cette image de personnage et décrivez brièvement ses caractéristiques principales (style artistique, morphologie, genre, etc.). Formulez ensuite une courte description pour générer des assets complémentaires qui s'intégreraient parfaitement sur ce personnage en PNG transparent."
               },
               {
                 type: "image_url",
@@ -111,7 +111,7 @@ export const generateAssetWithAI = async (
     }
     
     if (request.assetType !== 'base-doll') {
-      enhancedPrompt += `. This should be designed as a transparent PNG that can be layered on top of a character.`;
+      enhancedPrompt += `. Create this as a transparent PNG with no background, showing ONLY the ${request.assetType} itself with complete transparency around it, so it can be perfectly layered on top of a character. Make sure there is no background or border at all.`;
     }
 
     // Configuration pour DALL-E
@@ -155,7 +155,7 @@ export const generateAssetWithAI = async (
       style: request.style,
       url: imageUrl,
       thumbnailUrl: imageUrl,
-      tags: ["ia", request.style, request.assetType],
+      tags: ["ia", request.style, request.assetType, "transparent"],
       colors: [],
       dateCreated: new Date().toISOString(),
       dateModified: new Date().toISOString(),
