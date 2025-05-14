@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { RotateCw, MoveHorizontal, MoveVertical, Maximize } from 'lucide-react';
+import { ObjectProperties } from '@/types/canvas';
 
 interface ObjectControlsProps {
   isVisible: boolean;

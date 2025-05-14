@@ -4,15 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Eye, EyeOff, Trash2, Lock, Unlock, Layers as LayersIcon } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-
-interface Layer {
-  id: string;
-  name: string;
-  type: string;
-  visible: boolean;
-  locked: boolean;
-  object: fabric.Object;
-}
+import { Layer } from '@/types/canvas';
 
 interface LayersPanelProps {
   layers: Layer[];
