@@ -280,11 +280,11 @@ export const useCanvas = (width: number = 500, height: number = 600) => {
       const obj1 = newLayers[index].object;
       const obj2 = newLayers[newIndex].object;
       
+      // Fix: In Fabric.js v6, use bringForward/sendBackwards instead of moveTo
       if (direction === 'up') {
-        // Utiliser l'API canvas pour modifier l'ordre visuel
-        fabricCanvas.moveTo(obj1, fabricCanvas.getObjects().indexOf(obj2));
+        fabricCanvas.bringForward(obj1);
       } else {
-        fabricCanvas.moveTo(obj1, fabricCanvas.getObjects().indexOf(obj2));
+        fabricCanvas.sendBackwards(obj1);
       }
       
       fabricCanvas.renderAll();
