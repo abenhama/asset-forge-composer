@@ -17,21 +17,21 @@ export const useAssetManagement = (
     if (!fabricCanvas) return;
 
     try {
-      // Créer un blob à partir de l'URL pour contourner les problèmes CORS
-      // souvent rencontrés avec les images générées par des API comme OpenAI
-      const response = await fetch(asset.url, { mode: 'cors' });
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      
+      // Pour les URLs provenant de DALL-E, utiliser une approche sans CORS
       const img = await new Promise<HTMLImageElement>((resolve, reject) => {
         const imgElement = new Image();
-        imgElement.crossOrigin = 'anonymous';
-        imgElement.src = blobUrl;
+        
+        // Désactiver les restrictions CORS
+        imgElement.crossOrigin = "anonymous";
+        
         imgElement.onload = () => resolve(imgElement);
         imgElement.onerror = (error) => {
           console.error("Erreur de chargement de l'image:", error);
           reject(new Error("Impossible de charger l'image"));
         };
+        
+        // Définir la source en dernier pour éviter les problèmes de timing
+        imgElement.src = asset.url;
       });
 
       const fabricImage = new FabricImage(img, {
@@ -60,9 +60,6 @@ export const useAssetManagement = (
       const newLayer = addLayer(asset.name, asset.type, fabricImage);
       setSelectedObject(fabricImage);
       updateObjectProperties(fabricImage);
-
-      // Libérer la mémoire en révoquant l'URL du blob
-      URL.revokeObjectURL(blobUrl);
 
       toast("Asset ajouté", {
         description: `${asset.name} a été ajouté au canvas.`,

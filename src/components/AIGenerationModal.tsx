@@ -60,6 +60,9 @@ const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGener
       }
     } catch (error) {
       console.error("Erreur lors de la génération:", error);
+      toast.error("Erreur lors de la génération", {
+        description: "Une erreur s'est produite pendant le processus de génération."
+      });
     } finally {
       setIsGenerating(false);
     }

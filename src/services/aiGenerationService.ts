@@ -48,7 +48,7 @@ export const generateAssetWithAI = async (
       prompt: enhancedPrompt,
       n: 1,
       size: "1024x1024",
-      response_format: "url"
+      response_format: "b64_json" // Utiliser b64_json au lieu de URL pour éviter les problèmes CORS
     };
 
     console.log("Envoi de la requête à l'API DALL-E:", payload);
@@ -69,8 +69,11 @@ export const generateAssetWithAI = async (
     }
 
     const data = await response.json();
-    console.log("Réponse de l'API DALL-E:", data);
-    const imageUrl = data.data[0].url;
+    console.log("Réponse de l'API DALL-E reçue");
+    
+    // Convertir la chaîne base64 en URL de données
+    const base64Data = data.data[0].b64_json;
+    const imageUrl = `data:image/png;base64,${base64Data}`;
 
     // Conversion de l'asset généré au format attendu par l'application
     const newAsset: Asset = {
@@ -86,7 +89,7 @@ export const generateAssetWithAI = async (
       dateModified: new Date().toISOString(),
     };
     
-    console.log("Asset généré:", newAsset);
+    console.log("Asset généré avec succès");
     return newAsset;
   } catch (error) {
     console.error("Erreur lors de la génération d'assets:", error);
