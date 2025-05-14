@@ -15,7 +15,20 @@ import { Layers, Download, Trash, ZoomIn, ZoomOut, Wand2 } from 'lucide-react';
 import { mockAssets } from "@/data/mockData";
 import { Asset, AssetType } from "@/types";
 import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
 import AIGenerationModal from './AIGenerationModal';
+import LayersPanel from './LayersPanel';
+import ObjectControls from './ObjectControls';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+
+interface Layer {
+  id: string;
+  name: string;
+  type: string;
+  visible: boolean;
+  locked: boolean;
+  object: fabric.Object;
+}
 
 const CharacterComposer = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -24,6 +37,14 @@ const CharacterComposer = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [selectedBaseDoll, setSelectedBaseDoll] = useState<Asset | null>(null);
+  
+  // Nouvelles fonctionnalités
+  const [layers, setLayers] = useState<Layer[]>([]);
+  const [activeLayer, setActiveLayer] = useState<string | null>(null);
+  const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
+  const [objectPosition, setObjectPosition] = useState({ x: 0, y: 0 });
+  const [objectScale, setObjectScale] = useState({ x: 1, y: 1 });
+  const [objectAngle, setObjectAngle] = useState(0);
 
   // Filter assets by type
   const getAssetsByType = (type: AssetType) => {
@@ -40,6 +61,42 @@ const CharacterComposer = () => {
       backgroundColor: '#f8f9fa',
     });
 
+    // Événement de sélection d'objet
+    canvas.on('selection:created', (e) => handleObjectSelection(e));
+    canvas.on('selection:updated', (e) => handleObjectSelection(e));
+    canvas.on('selection:cleared', () => {
+      setSelectedObject(null);
+      setActiveLayer(null);
+    });
+
+    // Événement de modification d'objet
+    canvas.on('object:modified', (e) => {
+      if (e.target) {
+        updateObjectProperties(e.target);
+      }
+    });
+
+    // Événement de déplacement d'objet
+    canvas.on('object:moving', (e) => {
+      if (e.target) {
+        updateObjectProperties(e.target);
+      }
+    });
+
+    // Événement de redimensionnement d'objet
+    canvas.on('object:scaling', (e) => {
+      if (e.target) {
+        updateObjectProperties(e.target);
+      }
+    });
+
+    // Événement de rotation d'objet
+    canvas.on('object:rotating', (e) => {
+      if (e.target) {
+        updateObjectProperties(e.target);
+      }
+    });
+
     setFabricCanvas(canvas);
 
     // Cleanup
@@ -47,6 +104,36 @@ const CharacterComposer = () => {
       canvas.dispose();
     };
   }, []);
+
+  // Mettre à jour les propriétés de l'objet sélectionné
+  const updateObjectProperties = (obj: fabric.Object) => {
+    if (!obj) return;
+
+    setObjectPosition({ 
+      x: obj.left || 0, 
+      y: obj.top || 0 
+    });
+    setObjectScale({ 
+      x: obj.scaleX || 1, 
+      y: obj.scaleY || 1 
+    });
+    setObjectAngle(obj.angle || 0);
+  };
+
+  // Gérer la sélection d'un objet
+  const handleObjectSelection = (e: any) => {
+    if (!e.selected || e.selected.length === 0) return;
+    
+    const obj = e.selected[0];
+    setSelectedObject(obj);
+    updateObjectProperties(obj);
+    
+    // Trouver et sélectionner le calque correspondant
+    const layer = layers.find(layer => layer.object === obj);
+    if (layer) {
+      setActiveLayer(layer.id);
+    }
+  };
 
   const addAssetToCanvas = async (asset: Asset) => {
     if (!fabricCanvas) return;
@@ -67,6 +154,12 @@ const CharacterComposer = () => {
         scaleY: 0.5,
       });
 
+      // Ajouter une donnée personnalisée à l'objet
+      fabricImage.data = {
+        assetId: asset.id,
+        assetType: asset.type,
+      };
+
       fabricCanvas.add(fabricImage);
       fabricCanvas.setActiveObject(fabricImage);
       fabricCanvas.renderAll();
@@ -75,6 +168,21 @@ const CharacterComposer = () => {
       if (asset.type === 'base-doll') {
         setSelectedBaseDoll(asset);
       }
+
+      // Créer un nouveau calque
+      const newLayer: Layer = {
+        id: uuidv4(),
+        name: asset.name,
+        type: asset.type,
+        visible: true,
+        locked: false,
+        object: fabricImage
+      };
+
+      setLayers(prev => [...prev, newLayer]);
+      setActiveLayer(newLayer.id);
+      setSelectedObject(fabricImage);
+      updateObjectProperties(fabricImage);
 
       toast("Asset ajouté", {
         description: `${asset.name} a été ajouté au canvas.`,
@@ -93,6 +201,9 @@ const CharacterComposer = () => {
     fabricCanvas.backgroundColor = '#f8f9fa';
     fabricCanvas.renderAll();
     setSelectedBaseDoll(null);
+    setLayers([]);
+    setActiveLayer(null);
+    setSelectedObject(null);
     toast("Canvas effacé", {
       description: "Tous les assets ont été supprimés du canvas.",
     });
@@ -142,6 +253,117 @@ const CharacterComposer = () => {
     fabricCanvas.setZoom(zoom * 0.9);
   };
 
+  // Nouvelles fonctions pour gérer les calques
+  const handleSelectLayer = (id: string) => {
+    const layer = layers.find(layer => layer.id === id);
+    if (!layer || !fabricCanvas) return;
+
+    setActiveLayer(id);
+    fabricCanvas.setActiveObject(layer.object);
+    fabricCanvas.renderAll();
+    
+    setSelectedObject(layer.object);
+    updateObjectProperties(layer.object);
+  };
+
+  const handleToggleVisibility = (id: string) => {
+    setLayers(layers.map(layer => {
+      if (layer.id === id) {
+        const newVisible = !layer.visible;
+        layer.object.visible = newVisible;
+        fabricCanvas?.renderAll();
+        return { ...layer, visible: newVisible };
+      }
+      return layer;
+    }));
+  };
+
+  const handleToggleLock = (id: string) => {
+    setLayers(layers.map(layer => {
+      if (layer.id === id) {
+        const newLocked = !layer.locked;
+        layer.object.selectable = !newLocked;
+        layer.object.evented = !newLocked;
+        fabricCanvas?.renderAll();
+        return { ...layer, locked: newLocked };
+      }
+      return layer;
+    }));
+  };
+
+  const handleDeleteLayer = (id: string) => {
+    const layer = layers.find(layer => layer.id === id);
+    if (layer && fabricCanvas) {
+      fabricCanvas.remove(layer.object);
+      setLayers(layers.filter(l => l.id !== id));
+      
+      if (activeLayer === id) {
+        setActiveLayer(null);
+        setSelectedObject(null);
+      }
+    }
+  };
+
+  const handleMoveLayer = (id: string, direction: 'up' | 'down') => {
+    const index = layers.findIndex(layer => layer.id === id);
+    if (index === -1) return;
+
+    const newLayers = [...layers];
+    let newIndex;
+
+    if (direction === 'up' && index < newLayers.length - 1) {
+      newIndex = index + 1;
+    } else if (direction === 'down' && index > 0) {
+      newIndex = index - 1;
+    } else {
+      return;
+    }
+
+    // Échanger les calques
+    [newLayers[index], newLayers[newIndex]] = [newLayers[newIndex], newLayers[index]];
+    
+    // Mettre à jour l'ordre dans le canvas si nécessaire
+    if (fabricCanvas) {
+      const obj1 = newLayers[index].object;
+      const obj2 = newLayers[newIndex].object;
+      
+      if (direction === 'up') {
+        obj1.bringForward();
+      } else {
+        obj1.sendBackwards();
+      }
+      
+      fabricCanvas.renderAll();
+    }
+    
+    setLayers(newLayers);
+  };
+
+  // Fonctions pour modifier les propriétés de l'objet sélectionné
+  const handlePositionChange = (x: number, y: number) => {
+    if (!selectedObject || !fabricCanvas) return;
+    
+    selectedObject.set({ left: x, top: y });
+    fabricCanvas.renderAll();
+    setObjectPosition({ x, y });
+  };
+
+  const handleScaleChange = (x: number, y: number) => {
+    if (!selectedObject || !fabricCanvas) return;
+    
+    selectedObject.set({ scaleX: x, scaleY: y });
+    fabricCanvas.renderAll();
+    setObjectScale({ x, y });
+  };
+
+  const handleAngleChange = (angle: number) => {
+    if (!selectedObject || !fabricCanvas) return;
+    
+    selectedObject.set({ angle });
+    fabricCanvas.renderAll();
+    setObjectAngle(angle);
+  };
+
   return (
     <div className="h-full flex overflow-hidden">
       {/* Left Panel - Canvas */}
@@ -180,9 +402,41 @@ const CharacterComposer = () => {
           </div>
         </div>
         
-        <div className="flex-1 flex items-center justify-center bg-secondary/50 rounded-lg overflow-hidden border">
-          <canvas ref={canvasRef} />
-        </div>
+        <ResizablePanelGroup direction="vertical" className="flex-1">
+          <ResizablePanel defaultSize={70} className="flex items-center justify-center bg-secondary/50 rounded-lg overflow-hidden border">
+            <canvas ref={canvasRef} />
+          </ResizablePanel>
+          
+          <ResizableHandle withHandle />
+          
+          <ResizablePanel defaultSize={30} className="bg-card rounded-lg border">
+            <div className="p-4 space-y-4">
+              <h3 className="text-lg font-semibold mb-2">Propriétés</h3>
+              
+              {/* Panneau de calques */}
+              <LayersPanel 
+                layers={layers}
+                activeLayer={activeLayer}
+                onSelectLayer={handleSelectLayer}
+                onToggleVisibility={handleToggleVisibility}
+                onToggleLock={handleToggleLock}
+                onDeleteLayer={handleDeleteLayer}
+                onMoveLayer={handleMoveLayer}
+              />
+              
+              {/* Contrôles de l'objet sélectionné */}
+              <ObjectControls 
+                isVisible={!!selectedObject}
+                position={objectPosition}
+                scale={objectScale}
+                angle={objectAngle}
+                onPositionChange={handlePositionChange}
+                onScaleChange={handleScaleChange}
+                onAngleChange={handleAngleChange}
+              />
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
       
       {/* Right Panel - Assets */}
