@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import { Canvas, Image as FabricImage } from 'fabric';
 import { toast } from 'sonner';
 import { Asset } from '@/types';
-import { getAssetZIndex, getSuggestedPosition } from '@/utils/assetLayerUtils';
+import { getAssetZIndex, getSuggestedPosition, getDefaultAnchorPoints } from '@/utils/assetLayerUtils';
 
 export const useAssetManagement = (
   fabricCanvas: Canvas | null, 
@@ -53,7 +53,9 @@ export const useAssetManagement = (
         assetId: asset.id,
         assetType: asset.type,
         assetSubType: asset.subType,
-        zIndex: zIndex
+        zIndex: zIndex,
+        anchorPoints: asset.positioning?.anchorPoints || 
+                     (asset.type === 'base-doll' ? getDefaultAnchorPoints() : undefined)
       };
 
       // Assign the correct z-index

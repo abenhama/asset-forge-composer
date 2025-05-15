@@ -1,5 +1,5 @@
 
-import { Asset, AssetType, AssetSubType, LAYER_Z_INDEX } from "@/types";
+import { Asset, AssetType, AssetSubType, LAYER_Z_INDEX, AssetAnchorPoints } from "@/types";
 
 /**
  * Get the appropriate z-index for an asset based on its type and subtype
@@ -41,6 +41,67 @@ export const getAssetZIndex = (type: AssetType, subType?: AssetSubType): number 
       
     default:
       return 0;
+  }
+};
+
+/**
+ * Get default anchor points for a base doll
+ */
+export const getDefaultAnchorPoints = (): AssetAnchorPoints => {
+  return {
+    center: { x: 250, y: 300 },
+    head: { x: 250, y: 150 },
+    shoulders: { x: 250, y: 200 },
+    waist: { x: 250, y: 350 },
+    feet: { x: 250, y: 550 },
+    eyes: { x: 250, y: 130 },
+    nose: { x: 250, y: 150 },
+    mouth: { x: 250, y: 170 },
+    ears: { x: 250, y: 140 },
+    neck: { x: 250, y: 180 },
+    chest: { x: 250, y: 220 },
+    hands: { x: 300, y: 300 },
+    hips: { x: 250, y: 400 },
+    knees: { x: 250, y: 480 },
+    ankles: { x: 250, y: 520 }
+  };
+};
+
+/**
+ * Get the target anchor point for an asset type
+ */
+export const getTargetAnchorPoint = (assetType: AssetType, assetSubType?: AssetSubType): keyof AssetAnchorPoints => {
+  switch (assetType) {
+    case 'hair':
+      if (assetSubType === 'hair-front') return 'head';
+      if (assetSubType === 'hair-back') return 'head';
+      return 'head';
+      
+    case 'clothing':
+      if (assetSubType === 'clothing-top') return 'chest';
+      if (assetSubType === 'clothing-bottom') return 'hips';
+      if (assetSubType === 'clothing-dress') return 'chest';
+      if (assetSubType === 'clothing-outerwear') return 'shoulders';
+      if (assetSubType === 'clothing-undergarment') return 'waist';
+      return 'chest';
+      
+    case 'accessory':
+      if (assetSubType === 'glasses') return 'eyes';
+      if (assetSubType === 'hat') return 'head';
+      if (assetSubType === 'jewelry' || assetSubType === 'scarf') return 'neck';
+      if (assetSubType === 'watch') return 'hands';
+      if (assetSubType === 'bag') return 'hands';
+      return 'center';
+      
+    case 'facial-hair':
+      if (assetSubType === 'mustache') return 'mouth';
+      if (assetSubType === 'beard') return 'mouth';
+      if (assetSubType === 'goatee') return 'mouth';
+      if (assetSubType === 'sideburns') return 'ears';
+      return 'mouth';
+      
+    default:
+      return 'center';
   }
 };
 
@@ -99,7 +160,7 @@ export const checkAssetCompatibility = (asset1: Asset, asset2: Asset): { compati
 export const getSuggestedPosition = (
   asset: Asset, 
   baseDoll?: Asset | null
-): { x: number, y: number, scale: number } => {
+): { x: number; y: number; scale: number } => {
   // If the asset already has positioning information, use that
   if (asset.positioning) {
     return {
@@ -113,75 +174,48 @@ export const getSuggestedPosition = (
   const defaultPosition = { x: 250, y: 300, scale: 0.5 };
   
   // If no base doll is available, use default positioning
-  if (!baseDoll || !baseDoll.positioning) {
+  if (!baseDoll) {
     return defaultPosition;
   }
   
-  // Customize positioning based on asset type and subtype
-  switch (asset.type) {
-    case 'hair':
-      // Position hair near the head
-      return {
-        x: baseDoll.positioning.suggestedX,
-        y: baseDoll.positioning.suggestedY - 100, // Adjust Y to be above the base doll's center
-        scale: baseDoll.positioning.suggestedScale
-      };
-      
-    case 'clothing':
-      // Position clothing based on subtype
-      if (asset.subType === 'clothing-top') {
-        return {
-          x: baseDoll.positioning.suggestedX,
-          y: baseDoll.positioning.suggestedY - 50, // Slightly above center
-          scale: baseDoll.positioning.suggestedScale
-        };
-      } else if (asset.subType === 'clothing-bottom') {
-        return {
-          x: baseDoll.positioning.suggestedX,
-          y: baseDoll.positioning.suggestedY + 50, // Slightly below center
-          scale: baseDoll.positioning.suggestedScale
-        };
-      }
-      // Use base doll positioning for other clothing
-      return {
-        x: baseDoll.positioning.suggestedX,
-        y: baseDoll.positioning.suggestedY,
-        scale: baseDoll.positioning.suggestedScale
-      };
-      
-    case 'facial-hair':
-      // Position facial hair near the face
-      return {
-        x: baseDoll.positioning.suggestedX,
-        y: baseDoll.positioning.suggestedY - 75, // Adjust to face area
-        scale: baseDoll.positioning.suggestedScale * 0.7 // Slightly smaller scale
-      };
-      
-    case 'accessory':
-      // Position accessories based on subtype
-      if (asset.subType === 'glasses') {
-        return {
-          x: baseDoll.positioning.suggestedX,
-          y: baseDoll.positioning.suggestedY - 90, // Position near eyes
-          scale: baseDoll.positioning.suggestedScale * 0.6
-        };
-      } else if (asset.subType === 'hat') {
-        return {
-          x: baseDoll.positioning.suggestedX,
-          y: baseDoll.positioning.suggestedY - 120, // Position above head
-          scale: baseDoll.positioning.suggestedScale * 0.8
-        };
-      }
-      // Default accessory positioning
-      return {
-        x: baseDoll.positioning.suggestedX,
-        y: baseDoll.positioning.suggestedY,
-        scale: baseDoll.positioning.suggestedScale
-      };
-      
-    default:
-      return defaultPosition;
+  // Get the default anchor points for a base doll
+  const anchorPoints = baseDoll.positioning?.anchorPoints || getDefaultAnchorPoints();
+  
+  // Determine which anchor point to use based on the asset type and subtype
+  const targetAnchorPoint = getTargetAnchorPoint(asset.type, asset.subType);
+  
+  // If we have anchor points for the target area, use them
+  if (anchorPoints[targetAnchorPoint]) {
+    const point = anchorPoints[targetAnchorPoint];
+    let scale = baseDoll.positioning?.suggestedScale || 0.5;
+    
+    // Adjust scale based on asset type
+    if (asset.type === 'facial-hair') {
+      scale *= 0.7;
+    } else if (asset.type === 'accessory' && asset.subType === 'glasses') {
+      scale *= 0.6;
+    } else if (asset.type === 'accessory' && asset.subType === 'hat') {
+      scale *= 0.8;
+    }
+    
+    return {
+      x: point!.x,
+      y: point!.y,
+      scale
+    };
   }
+  
+  // If all else fails, use the positioning from the base doll
+  if (baseDoll.positioning) {
+    return {
+      x: baseDoll.positioning.suggestedX,
+      y: baseDoll.positioning.suggestedY,
+      scale: baseDoll.positioning.suggestedScale
+    };
+  }
+  
+  // Default fallback
+  return defaultPosition;
 };
 
 /**

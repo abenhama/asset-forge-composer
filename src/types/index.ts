@@ -115,6 +115,18 @@ export interface AssetAnchorPoints {
   shoulders?: { x: number; y: number };
   waist?: { x: number; y: number };
   feet?: { x: number; y: number };
+  // New detailed facial anchor points
+  eyes?: { x: number; y: number };
+  nose?: { x: number; y: number };
+  mouth?: { x: number; y: number };
+  ears?: { x: number; y: number };
+  // New detailed body anchor points
+  neck?: { x: number; y: number };
+  chest?: { x: number; y: number };
+  hands?: { x: number; y: number };
+  hips?: { x: number; y: number };
+  knees?: { x: number; y: number };
+  ankles?: { x: number; y: number };
 }
 
 // Z-index constants for proper layering
@@ -157,9 +169,15 @@ export interface Asset {
     suggestedY: number;
     suggestedScale: number;
     anchorPoints?: AssetAnchorPoints;
+    alignTo?: Array<{
+      assetType: AssetType;
+      anchorPoint: keyof AssetAnchorPoints;
+      targetAnchorPoint: keyof AssetAnchorPoints;
+      offset?: { x: number; y: number };
+    }>;
   };
-  zIndex?: number; // Default z-index based on type/subtype
-  version?: string; // For asset versioning (major.minor.patch)
+  zIndex?: number;
+  version?: string;
 }
 
 // Asset compatibility rule

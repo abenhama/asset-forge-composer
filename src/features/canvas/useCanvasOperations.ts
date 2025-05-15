@@ -72,6 +72,7 @@ export const useCanvasOperations = (
       // Déterminer le type d'asset et sous-type si disponible
       const assetType = (layer.object as any).data?.assetType || layer.type;
       const assetSubType = (layer.object as any).data?.assetSubType;
+      const anchorPoints = (layer.object as any).data?.anchorPoints;
       
       // Obtenir le zIndex approprié basé sur le type et sous-type
       // Utiliser soit la valeur zIndex stockée, soit calculer en fonction du type
@@ -95,7 +96,8 @@ export const useCanvasOperations = (
           y: layer.object.scaleY || 1
         },
         angle: layer.object.angle || 0,
-        zIndex: zIndex
+        zIndex: zIndex,
+        anchorPoints: anchorPoints
       };
     });
     
