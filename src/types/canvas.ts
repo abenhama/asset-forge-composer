@@ -22,6 +22,23 @@ export interface CanvasObject {
   anchorPoints?: AssetAnchorPoints;
 }
 
+// Layer interface for canvas objects
+export interface Layer {
+  id: string;
+  name: string;
+  type: string;
+  visible: boolean;
+  locked: boolean;
+  object: any; // Using 'any' for fabric.Object compatibility
+}
+
+// Object properties interface
+export interface ObjectProperties {
+  position: { x: number; y: number };
+  scale: { x: number; y: number };
+  angle: number;
+}
+
 // Asset compatibility rule
 export interface CompatibilityRule {
   assetType: AssetType;

@@ -73,6 +73,9 @@ export const LAYER_Z_INDEX = {
   ACCESSORY_HAT: 16
 };
 
+// Import AssetMetadata from metadata.ts
+import { AssetMetadata } from './metadata';
+
 // Enhanced Asset interface with the new metadata and positioning
 export interface Asset {
   id: string;
