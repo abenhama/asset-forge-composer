@@ -38,4 +38,11 @@ export interface CanvasState {
   selectedObject: FabricObject | null;
   objectProperties: ObjectProperties;
   selectedBaseDoll: Asset | null;
+  canvasAssets: Asset[];
 }
+
+export interface AssetCompatibilityResult {
+  compatible: boolean;
+  reason?: string;
+}
+

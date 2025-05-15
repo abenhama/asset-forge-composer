@@ -1,8 +1,11 @@
+
 import { useState, useCallback } from 'react';
 import { Canvas, Object as FabricObject } from 'fabric';
 import { v4 as uuidv4 } from 'uuid';
-import { Layer } from './types';
+import { Layer } from '@/types/canvas';
 import { toast } from 'sonner';
+import { getAssetZIndex } from '@/utils/assetLayerUtils';
+import { checkAssetCompatibility } from '@/utils/assetLayerUtils';
 
 export const useLayerManagement = (fabricCanvas: Canvas | null) => {
   const [layers, setLayers] = useState<Layer[]>([]);
@@ -74,9 +77,11 @@ export const useLayerManagement = (fabricCanvas: Canvas | null) => {
       return;
     }
     
-    // Check z-index logic to ensure we're not violating layering rules
-    const currentZIndex = (newLayers[index].object as any).data?.zIndex || 0;
-    const targetZIndex = (newLayers[newIndex].object as any).data?.zIndex || 0;
+    // Get z-index info for both layers
+    const currentLayer = newLayers[index];
+    const targetLayer = newLayers[newIndex];
+    const currentZIndex = (currentLayer.object as any).data?.zIndex || 0;
+    const targetZIndex = (targetLayer.object as any).data?.zIndex || 0;
     
     // If we're trying to move an object with a lower z-index above an object with a higher z-index
     // (or vice versa), warn the user but still allow it
@@ -109,10 +114,48 @@ export const useLayerManagement = (fabricCanvas: Canvas | null) => {
     setLayers(newLayers);
   }, [fabricCanvas, layers]);
 
-  // Add a new layer
+  // Add a new layer with proper z-index ordering
   const addLayer = useCallback((name: string, type: string, object: FabricObject) => {
     // Get z-index from object metadata if it exists
     const zIndex = (object as any).data?.zIndex || 0;
+    
+    // Check compatibility with existing layers
+    if ((object as any).data?.assetType) {
+      // Get incompatible layers
+      const incompatibleLayers = layers.filter(existingLayer => {
+        if (!(existingLayer.object as any).data?.assetType) return false;
+        
+        const compatibility = checkAssetCompatibility(
+          {
+            type: (object as any).data.assetType,
+            subType: (object as any).data.assetSubType,
+          },
+          {
+            type: (existingLayer.object as any).data.assetType,
+            subType: (existingLayer.object as any).data.assetSubType,
+          }
+        );
+        
+        return !compatibility.compatible;
+      });
+      
+      // If incompatible layers found, show warning to user
+      if (incompatibleLayers.length > 0) {
+        const conflictNames = incompatibleLayers.map(layer => layer.name).join(', ');
+        
+        toast.warning("Conflits de compatibilité détectés", {
+          description: `"${name}" pourrait être incompatible avec: ${conflictNames}`,
+          action: {
+            label: "Plus d'infos",
+            onClick: () => {
+              toast.info("Conseil", {
+                description: "Certains éléments peuvent se chevaucher ou ne pas s'afficher correctement ensemble."
+              });
+            },
+          },
+        });
+      }
+    }
     
     const newLayer: Layer = {
       id: uuidv4(),
@@ -145,18 +188,38 @@ export const useLayerManagement = (fabricCanvas: Canvas | null) => {
     setActiveLayer(newLayer.id);
     
     return newLayer;
-  }, []);
+  }, [layers]);
 
   // Sort layers by z-index
   const sortLayersByZIndex = useCallback(() => {
     setLayers(prev => {
-      return [...prev].sort((a, b) => {
+      // Create a copy of the layers array
+      const sortedLayers = [...prev];
+      
+      // Sort the layers by z-index
+      sortedLayers.sort((a, b) => {
         const aZIndex = (a.object as any).data?.zIndex || 0;
         const bZIndex = (b.object as any).data?.zIndex || 0;
         return aZIndex - bZIndex;
       });
+      
+      // If canvas is available, reorder the objects as well
+      if (fabricCanvas) {
+        // Temporarily remove objects from canvas
+        const objects = sortedLayers.map(layer => layer.object);
+        fabricCanvas.remove(...objects);
+        
+        // Add them back in the correct order
+        objects.forEach(obj => {
+          fabricCanvas.add(obj);
+        });
+        
+        fabricCanvas.renderAll();
+      }
+      
+      return sortedLayers;
     });
-  }, []);
+  }, [fabricCanvas]);
 
   // Clear all layers
   const clearLayers = useCallback(() => {

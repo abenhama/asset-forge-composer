@@ -26,6 +26,7 @@ const CharacterComposer: React.FC = () => {
     activeLayer,
     objectProperties,
     selectedBaseDoll,
+    canvasAssets,
     addAssetToCanvas,
     clearCanvas,
     downloadCanvas,
@@ -152,7 +153,10 @@ const CharacterComposer: React.FC = () => {
       </div>
       
       {/* Right Panel - Assets */}
-      <AssetsSidebar onSelectAsset={addAssetToCanvas} />
+      <AssetsSidebar 
+        onSelectAsset={addAssetToCanvas} 
+        currentAssets={canvasAssets}
+      />
 
       {/* Modal de génération d'IA */}
       <AIGenerationModal 

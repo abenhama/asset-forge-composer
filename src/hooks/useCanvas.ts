@@ -21,6 +21,7 @@ export const useCanvas = (width: number = 500, height: number = 600) => {
     deleteLayer, 
     moveLayer, 
     addLayer,
+    sortLayersByZIndex,
     clearLayers 
   } = useLayerManagement(fabricCanvas);
   
@@ -39,8 +40,10 @@ export const useCanvas = (width: number = 500, height: number = 600) => {
   // Asset management
   const { 
     selectedBaseDoll, 
-    setSelectedBaseDoll, 
-    addAssetToCanvas 
+    setSelectedBaseDoll,
+    canvasAssets,
+    addAssetToCanvas,
+    clearAssets
   } = useAssetManagement(fabricCanvas, addLayer, setSelectedObject, updateObjectProperties);
   
   // Canvas operations
@@ -105,6 +108,12 @@ export const useCanvas = (width: number = 500, height: number = 600) => {
     };
   }, [fabricCanvas, handleObjectSelection, layers, setActiveLayer, updateObjectProperties, setSelectedObject]);
 
+  // Extend clearCanvas to also clear assets
+  const handleClearCanvas = () => {
+    clearCanvas();
+    clearAssets();
+  };
+
   return {
     canvasRef,
     fabricCanvas,
@@ -113,8 +122,9 @@ export const useCanvas = (width: number = 500, height: number = 600) => {
     selectedObject,
     objectProperties,
     selectedBaseDoll,
+    canvasAssets,
     addAssetToCanvas,
-    clearCanvas,
+    clearCanvas: handleClearCanvas,
     downloadCanvas,
     zoomCanvas,
     selectLayer,
@@ -126,6 +136,7 @@ export const useCanvas = (width: number = 500, height: number = 600) => {
     updateObjectScale,
     updateObjectAngle,
     setSelectedBaseDoll,
-    saveCharacter
+    saveCharacter,
+    sortLayersByZIndex
   };
 };

@@ -1,4 +1,3 @@
-
 import { Asset, AssetType, AssetSubType, LAYER_Z_INDEX, AssetAnchorPoints } from "@/types";
 
 /**
@@ -106,9 +105,20 @@ export const getTargetAnchorPoint = (assetType: AssetType, assetSubType?: AssetS
 };
 
 /**
+ * Interface for simplified asset compatibility checking
+ */
+interface SimpleAsset {
+  type: AssetType;
+  subType?: AssetSubType;
+}
+
+/**
  * Check if two assets are compatible with each other
  */
-export const checkAssetCompatibility = (asset1: Asset, asset2: Asset): { compatible: boolean, reason?: string } => {
+export const checkAssetCompatibility = (
+  asset1: Asset | SimpleAsset, 
+  asset2: Asset | SimpleAsset
+): { compatible: boolean, reason?: string } => {
   // Base doll can only be added once
   if (asset1.type === 'base-doll' && asset2.type === 'base-doll') {
     return {
@@ -139,10 +149,30 @@ export const checkAssetCompatibility = (asset1: Asset, asset2: Asset): { compati
     }
   }
   
+  // Multiple hairstyles of the same subtype may conflict
+  if (asset1.type === 'hair' && asset2.type === 'hair') {
+    if (asset1.subType === asset2.subType) {
+      return {
+        compatible: false,
+        reason: `Deux coiffures du même type (${asset1.subType}) ne peuvent pas être utilisées simultanément.`
+      };
+    }
+  }
+  
   // Some hats may conflict with certain hairstyles
   if (asset1.type === 'accessory' && asset1.subType === 'hat') {
     if (asset2.type === 'hair' && asset2.subType === 'hair-front') {
       // This is a simplified check - in a real implementation we'd check specific hat and hair types
+      return {
+        compatible: true,
+        reason: "Attention: certains chapeaux peuvent ne pas s'adapter parfaitement à cette coiffure."
+      };
+    }
+  }
+  
+  // Same check in reverse
+  if (asset2.type === 'accessory' && asset2.subType === 'hat') {
+    if (asset1.type === 'hair' && asset1.subType === 'hair-front') {
       return {
         compatible: true,
         reason: "Attention: certains chapeaux peuvent ne pas s'adapter parfaitement à cette coiffure."
@@ -259,4 +289,66 @@ export const getAssetTypeLabel = (type: AssetType, subType?: AssetSubType): stri
     default:
       return 'Asset';
   }
+};
+
+/**
+ * Check if an asset requires a base doll
+ */
+export const doesAssetRequireBaseDoll = (assetType: AssetType): boolean => {
+  // Most assets require a base doll except for the base doll itself
+  return assetType !== 'base-doll';
+};
+
+/**
+ * Get a list of recommended compatible assets for a given asset
+ */
+export const getCompatibleAssets = (
+  currentAsset: Asset, 
+  availableAssets: Asset[]
+): Asset[] => {
+  return availableAssets.filter(asset => {
+    // Don't include the current asset itself
+    if (asset.id === currentAsset.id) return false;
+    
+    // Check compatibility
+    const { compatible } = checkAssetCompatibility(currentAsset, asset);
+    return compatible;
+  });
+};
+
+/**
+ * Get a list of recommended next assets based on what's already on the canvas
+ */
+export const getRecommendedNextAssets = (
+  currentAssets: Asset[],
+  availableAssets: Asset[]
+): Asset[] => {
+  // If there are no assets on canvas yet, recommend base dolls first
+  if (currentAssets.length === 0) {
+    return availableAssets.filter(asset => asset.type === 'base-doll');
+  }
+  
+  // Check if we have a base doll
+  const hasBaseDoll = currentAssets.some(asset => asset.type === 'base-doll');
+  
+  // If we don't have a base doll yet, that's the first recommendation
+  if (!hasBaseDoll) {
+    return availableAssets.filter(asset => asset.type === 'base-doll');
+  }
+  
+  // Otherwise, filter out incompatible assets and those already added
+  return availableAssets.filter(asset => {
+    // Skip if this asset is already on the canvas
+    if (currentAssets.some(existing => existing.id === asset.id)) {
+      return false;
+    }
+    
+    // Check compatibility with all current assets
+    for (const existing of currentAssets) {
+      const { compatible } = checkAssetCompatibility(existing, asset);
+      if (!compatible) return false;
+    }
+    
+    return true;
+  });
 };
