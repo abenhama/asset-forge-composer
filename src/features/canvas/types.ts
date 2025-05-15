@@ -1,6 +1,6 @@
 
 import { Canvas, Object as FabricObject } from 'fabric';
-import { Asset, AssetType } from '@/types';
+import { Asset, AssetType, AssetSubType } from '@/types';
 
 export interface Layer {
   id: string;
@@ -21,12 +21,14 @@ export interface SavedLayer {
   id: string;
   name: string;
   type: string;
+  subType?: AssetSubType;
   visible: boolean;
   locked: boolean;
   assetId: string | null;
   position: { x: number; y: number };
   scale: { x: number; y: number };
   angle: number;
+  zIndex: number;
 }
 
 export interface CanvasState {

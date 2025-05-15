@@ -4,6 +4,7 @@ import { Canvas } from 'fabric';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { Layer } from './types';
+import { getAssetZIndex } from '@/utils/assetLayerUtils';
 
 export const useCanvasOperations = (
   fabricCanvas: Canvas | null,
@@ -67,23 +68,36 @@ export const useCanvasOperations = (
       multiplier: 1,
     });
     
-    const layerData = layers.map(layer => ({
-      id: layer.id,
-      name: layer.name,
-      type: layer.type,
-      visible: layer.visible,
-      locked: layer.locked,
-      assetId: (layer.object as any).data?.assetId || null,
-      position: {
-        x: layer.object.left || 0,
-        y: layer.object.top || 0
-      },
-      scale: {
-        x: layer.object.scaleX || 1,
-        y: layer.object.scaleY || 1
-      },
-      angle: layer.object.angle || 0
-    }));
+    const layerData = layers.map(layer => {
+      // Déterminer le type d'asset et sous-type si disponible
+      const assetType = (layer.object as any).data?.assetType || layer.type;
+      const assetSubType = (layer.object as any).data?.assetSubType;
+      
+      // Obtenir le zIndex approprié basé sur le type et sous-type
+      // Utiliser soit la valeur zIndex stockée, soit calculer en fonction du type
+      const zIndex = (layer.object as any).data?.zIndex || 
+                     getAssetZIndex(assetType, assetSubType);
+      
+      return {
+        id: layer.id,
+        name: layer.name,
+        type: assetType,
+        subType: assetSubType,
+        visible: layer.visible,
+        locked: layer.locked,
+        assetId: (layer.object as any).data?.assetId || null,
+        position: {
+          x: layer.object.left || 0,
+          y: layer.object.top || 0
+        },
+        scale: {
+          x: layer.object.scaleX || 1,
+          y: layer.object.scaleY || 1
+        },
+        angle: layer.object.angle || 0,
+        zIndex: zIndex
+      };
+    });
     
     const character = {
       id: uuidv4(),
