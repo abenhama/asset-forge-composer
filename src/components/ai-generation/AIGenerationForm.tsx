@@ -1,33 +1,20 @@
 
-import React from 'react';
-import { useForm } from "react-hook-form";
-import { Wand2, Sparkles } from 'lucide-react';
-import { AssetType, AssetStyle } from "@/types";
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
-import { 
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import APIKeyInput from "./APIKeyInput";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AssetType, AssetStyle, AssetSubType } from '@/types';
+import APIKeyInput from './APIKeyInput';
+import { Loader2 } from 'lucide-react';
 
-export type GenerationFormValues = {
+export interface GenerationFormValues {
   assetType: AssetType;
-  prompt: string;
+  assetSubType?: AssetSubType;
   style: AssetStyle;
+  prompt: string;
   apiKey: string;
-};
+}
 
 interface AIGenerationFormProps {
   onSubmit: (data: GenerationFormValues) => void;
@@ -35,136 +22,173 @@ interface AIGenerationFormProps {
   savedApiKey: string | null;
   onClearApiKey: () => void;
   onCancel: () => void;
-  disableSubmit: boolean;
+  disableSubmit?: boolean;
 }
 
-const AIGenerationForm = ({
+// Map of asset types to their subtypes
+const assetSubTypes: Record<AssetType, { value: AssetSubType; label: string }[]> = {
+  'base-doll': [],
+  'hair': [
+    { value: 'hair-front', label: 'Cheveux (avant)' },
+    { value: 'hair-back', label: 'Cheveux (arrière)' },
+    { value: 'hair-full', label: 'Cheveux (complet)' }
+  ],
+  'clothing': [
+    { value: 'clothing-top', label: 'Haut' },
+    { value: 'clothing-bottom', label: 'Bas' },
+    { value: 'clothing-dress', label: 'Robe' },
+    { value: 'clothing-outerwear', label: 'Veste/Manteau' },
+    { value: 'clothing-undergarment', label: 'Sous-vêtement' }
+  ],
+  'accessory': [
+    { value: 'glasses', label: 'Lunettes' },
+    { value: 'hat', label: 'Chapeau' },
+    { value: 'jewelry', label: 'Bijou' },
+    { value: 'bag', label: 'Sac' },
+    { value: 'scarf', label: 'Écharpe' },
+    { value: 'watch', label: 'Montre' }
+  ],
+  'facial-hair': [
+    { value: 'mustache', label: 'Moustache' },
+    { value: 'beard', label: 'Barbe' },
+    { value: 'goatee', label: 'Barbichette' },
+    { value: 'sideburns', label: 'Favoris' }
+  ]
+};
+
+const AIGenerationForm: React.FC<AIGenerationFormProps> = ({
   onSubmit,
   isGenerating,
   savedApiKey,
   onClearApiKey,
   onCancel,
   disableSubmit
-}: AIGenerationFormProps) => {
-  const form = useForm<GenerationFormValues>({
-    defaultValues: {
-      assetType: 'hair',
-      prompt: '',
-      style: 'cartoon',
-      apiKey: savedApiKey || '',
-    },
-  });
+}) => {
+  const [assetType, setAssetType] = useState<AssetType>('clothing');
+  const [assetSubType, setAssetSubType] = useState<AssetSubType | undefined>(undefined);
+  const [style, setStyle] = useState<AssetStyle>('cartoon');
+  const [prompt, setPrompt] = useState<string>('');
+  const [apiKey, setApiKey] = useState<string>(savedApiKey || '');
+  
+  // Update subtype when asset type changes
+  React.useEffect(() => {
+    const availableSubTypes = assetSubTypes[assetType];
+    if (availableSubTypes && availableSubTypes.length > 0) {
+      setAssetSubType(availableSubTypes[0].value);
+    } else {
+      setAssetSubType(undefined);
+    }
+  }, [assetType]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      assetType,
+      assetSubType,
+      style,
+      prompt,
+      apiKey
+    });
+  };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <APIKeyInput 
-          form={form} 
-          savedApiKey={savedApiKey} 
-          onClearApiKey={onClearApiKey} 
-        />
-        
-        <FormField
-          control={form.control}
-          name="assetType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Type d'asset à générer</FormLabel>
-              <Select 
-                onValueChange={field.onChange} 
-                defaultValue={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez un type d'asset" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="hair">Cheveux</SelectItem>
-                  <SelectItem value="clothing">Vêtements</SelectItem>
-                  <SelectItem value="accessory">Accessoires</SelectItem>
-                  <SelectItem value="facial-hair">Pilosité faciale</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="style"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Style visuel</FormLabel>
-              <Select 
-                onValueChange={field.onChange} 
-                defaultValue={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Style" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="cartoon">Dessin animé</SelectItem>
-                  <SelectItem value="realistic">Réaliste</SelectItem>
-                  <SelectItem value="anime">Anime</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="prompt"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Prompt de génération (optionnel)</FormLabel>
-              <FormControl>
-                <Input 
-                  placeholder="Ex: Cheveux courts bouclés rouges..." 
-                  {...field} 
-                />
-              </FormControl>
-              <FormDescription className="flex items-center text-blue-600">
-                <Sparkles className="w-3 h-3 mr-1" />
-                L'IA analysera automatiquement votre personnage base pour adapter le résultat
-              </FormDescription>
-            </FormItem>
-          )}
-        />
-
-        <div className="pt-4 flex justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
+    <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+      <div className="space-y-2">
+        <Label htmlFor="asset-type">Type d'asset</Label>
+        <Select 
+          value={assetType} 
+          onValueChange={(value) => setAssetType(value as AssetType)}
+        >
+          <SelectTrigger id="asset-type">
+            <SelectValue placeholder="Choisir un type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="clothing">Vêtement</SelectItem>
+            <SelectItem value="hair">Cheveux</SelectItem>
+            <SelectItem value="accessory">Accessoire</SelectItem>
+            <SelectItem value="facial-hair">Pilosité Faciale</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {/* Show subtype select only if the asset type has subtypes */}
+      {assetSubTypes[assetType] && assetSubTypes[assetType].length > 0 && (
+        <div className="space-y-2">
+          <Label htmlFor="asset-subtype">Sous-type</Label>
+          <Select 
+            value={assetSubType} 
+            onValueChange={(value) => setAssetSubType(value as AssetSubType)}
           >
-            Annuler
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={isGenerating || disableSubmit || !form.watch('apiKey')}
-          >
-            {isGenerating ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Analyse et génération...
-              </span>
-            ) : (
-              <span className="flex items-center">
-                <Wand2 className="mr-2 h-4 w-4" />
-                Générer
-              </span>
-            )}
-          </Button>
+            <SelectTrigger id="asset-subtype">
+              <SelectValue placeholder="Choisir un sous-type" />
+            </SelectTrigger>
+            <SelectContent>
+              {assetSubTypes[assetType].map(subType => (
+                <SelectItem key={subType.value} value={subType.value}>
+                  {subType.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </form>
-    </Form>
+      )}
+      
+      <div className="space-y-2">
+        <Label htmlFor="style">Style</Label>
+        <Select 
+          value={style} 
+          onValueChange={(value) => setStyle(value as AssetStyle)}
+        >
+          <SelectTrigger id="style">
+            <SelectValue placeholder="Choisir un style" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="cartoon">Cartoon</SelectItem>
+            <SelectItem value="realistic">Réaliste</SelectItem>
+            <SelectItem value="anime">Anime</SelectItem>
+            <SelectItem value="minimalist">Minimaliste</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="prompt">Description détaillée (optionnel)</Label>
+        <Textarea 
+          id="prompt" 
+          placeholder="Décrivez l'asset souhaité en détail..." 
+          className="resize-none" 
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          rows={3}
+        />
+      </div>
+      
+      <APIKeyInput
+        apiKey={apiKey}
+        onChange={setApiKey}
+        onClear={onClearApiKey}
+        savedApiKey={!!savedApiKey}
+      />
+      
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Annuler
+        </Button>
+        <Button 
+          type="submit"
+          disabled={isGenerating || !apiKey || disableSubmit}
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Génération...
+            </>
+          ) : (
+            'Générer Asset'
+          )}
+        </Button>
+      </div>
+    </form>
   );
 };
 

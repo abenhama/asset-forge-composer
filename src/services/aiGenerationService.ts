@@ -1,7 +1,8 @@
 
 import { toast } from "sonner";
-import { Asset, AssetType, AssetStyle } from "@/types";
+import { Asset, AssetType, AssetStyle, AssetSubType, LAYER_Z_INDEX } from "@/types";
 import { v4 as uuidv4 } from 'uuid';
+import { getAssetZIndex } from "@/utils/assetLayerUtils";
 
 // Configuration pour l'API d'IA
 const AI_API_ENDPOINT = "https://api.openai.com/v1/images/generations";
@@ -10,14 +11,10 @@ const AI_CHAT_API_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 // Types pour les requêtes et réponses
 interface AIGenerationRequest {
   assetType: AssetType;
+  assetSubType?: AssetSubType;
   prompt: string;
   style: AssetStyle;
   baseDollUrl?: string;
-}
-
-interface AIGenerationResponse {
-  url: string;
-  thumbnailUrl: string;
 }
 
 // Structure pour les informations d'analyse
@@ -27,6 +24,12 @@ interface AnalysisResult {
     suggestedX: number;
     suggestedY: number;
     suggestedScale: number;
+    anchorPoints?: {
+      head?: { x: number, y: number };
+      shoulders?: { x: number, y: number };
+      waist?: { x: number, y: number };
+      feet?: { x: number, y: number };
+    };
   };
 }
 
@@ -48,10 +51,6 @@ const analyzeBaseDoll = async (
     // Conversion de l'URL data en File pour l'envoyer à l'API
     const baseDollFile = await dataUrlToFile(baseDollDataUrl, "base-doll.png");
     
-    // Créer un FormData pour envoyer l'image directement
-    const formData = new FormData();
-    formData.append("model", "gpt-4o");
-    
     const messages = [
       {
         role: "system",
@@ -62,7 +61,7 @@ const analyzeBaseDoll = async (
         content: [
           {
             type: "text",
-            text: "Analysez cette image de personnage et décrivez brièvement ses caractéristiques principales (style artistique, morphologie, genre, etc.). Formulez ensuite une courte description pour générer des assets complémentaires qui s'intégreraient parfaitement sur ce personnage en PNG transparent. Incluez également des coordonnées suggérées pour le placement (X, Y) et l'échelle appropriée. Répondez avec un JSON au format suivant: {\"description\": \"votre analyse\", \"positioning\": {\"suggestedX\": valeur, \"suggestedY\": valeur, \"suggestedScale\": valeur}}."
+            text: "Analysez cette image de personnage et décrivez ses caractéristiques principales (style artistique, morphologie, genre, âge, teint de peau, etc.). Identifiez avec précision les points d'ancrage suivants: tête, épaules, taille et pieds. Formulez ensuite une description détaillée pour générer des assets complémentaires qui s'intégreraient parfaitement sur ce personnage en PNG transparent. Les assets doivent être parfaitement découpés avec un fond transparent pour superposition. Répondez avec un JSON au format suivant: {\"description\": \"votre analyse\", \"positioning\": {\"suggestedX\": valeur, \"suggestedY\": valeur, \"suggestedScale\": valeur, \"anchorPoints\": {\"head\": {\"x\": valeur, \"y\": valeur}, \"shoulders\": {\"x\": valeur, \"y\": valeur}, \"waist\": {\"x\": valeur, \"y\": valeur}, \"feet\": {\"x\": valeur, \"y\": valeur}}}}."
           },
           {
             type: "image_url",
@@ -74,18 +73,16 @@ const analyzeBaseDoll = async (
       }
     ];
     
-    formData.append("messages", JSON.stringify(messages));
-    formData.append("max_tokens", "500");
-    
     const response = await fetch(AI_CHAT_API_ENDPOINT, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         model: "gpt-4o",
         messages,
-        max_tokens: 500
+        max_tokens: 1000
       })
     });
 
@@ -104,9 +101,15 @@ const analyzeBaseDoll = async (
       return {
         description: parsedResult.description,
         positioning: {
-          suggestedX: parsedResult.positioning.suggestedX || 150,
-          suggestedY: parsedResult.positioning.suggestedY || 150,
-          suggestedScale: parsedResult.positioning.suggestedScale || 0.5
+          suggestedX: parsedResult.positioning.suggestedX || 250,
+          suggestedY: parsedResult.positioning.suggestedY || 300,
+          suggestedScale: parsedResult.positioning.suggestedScale || 0.5,
+          anchorPoints: parsedResult.positioning.anchorPoints || {
+            head: { x: 250, y: 150 },
+            shoulders: { x: 250, y: 200 },
+            waist: { x: 250, y: 300 },
+            feet: { x: 250, y: 450 }
+          }
         }
       };
     } catch (parseError) {
@@ -115,9 +118,15 @@ const analyzeBaseDoll = async (
       return {
         description: analysisResult || "",
         positioning: {
-          suggestedX: 150,
-          suggestedY: 150,
-          suggestedScale: 0.5
+          suggestedX: 250,
+          suggestedY: 300,
+          suggestedScale: 0.5,
+          anchorPoints: {
+            head: { x: 250, y: 150 },
+            shoulders: { x: 250, y: 200 },
+            waist: { x: 250, y: 300 },
+            feet: { x: 250, y: 450 }
+          }
         }
       };
     }
@@ -126,6 +135,81 @@ const analyzeBaseDoll = async (
     return null; // En cas d'erreur, retourner null
   }
 };
+
+// Fonction pour générer un prompt DALL-E adapté au type d'asset
+const generateAssetTypePrompt = (
+  assetType: AssetType, 
+  assetSubType: AssetSubType | undefined,
+  basePrompt: string,
+  style: AssetStyle,
+  dollAnalysis?: string
+): string => {
+  let typeSpecificInstructions = "";
+  
+  switch(assetType) {
+    case 'base-doll':
+      typeSpecificInstructions = "un personnage complet sur fond transparent, corps entier visible, proportions réalistes";
+      break;
+      
+    case 'hair':
+      if (assetSubType === 'hair-front') {
+        typeSpecificInstructions = "une coiffure frontale uniquement (partie avant des cheveux), parfaitement découpée sur fond transparent";
+      } else if (assetSubType === 'hair-back') {
+        typeSpecificInstructions = "la partie arrière des cheveux uniquement, parfaitement découpée sur fond transparent";
+      } else {
+        typeSpecificInstructions = "une coiffure complète (avant et arrière), parfaitement découpée sur fond transparent";
+      }
+      break;
+      
+    case 'clothing':
+      if (assetSubType === 'clothing-top') {
+        typeSpecificInstructions = "un haut de vêtement uniquement (t-shirt, chemise, etc.), parfaitement découpé sur fond transparent";
+      } else if (assetSubType === 'clothing-bottom') {
+        typeSpecificInstructions = "un bas de vêtement uniquement (pantalon, jupe, etc.), parfaitement découpé sur fond transparent";
+      } else if (assetSubType === 'clothing-dress') {
+        typeSpecificInstructions = "une robe complète, parfaitement découpée sur fond transparent";
+      } else if (assetSubType === 'clothing-outerwear') {
+        typeSpecificInstructions = "un vêtement d'extérieur (veste, manteau, etc.), parfaitement découpé sur fond transparent";
+      } else {
+        typeSpecificInstructions = "un vêtement parfaitement découpé sur fond transparent";
+      }
+      break;
+      
+    case 'accessory':
+      if (assetSubType === 'glasses') {
+        typeSpecificInstructions = "des lunettes uniquement, parfaitement découpées sur fond transparent";
+      } else if (assetSubType === 'hat') {
+        typeSpecificInstructions = "un chapeau ou une casquette uniquement, parfaitement découpé sur fond transparent";
+      } else if (assetSubType === 'jewelry') {
+        typeSpecificInstructions = "un bijou uniquement (collier, bracelet, etc.), parfaitement découpé sur fond transparent";
+      } else {
+        typeSpecificInstructions = "un accessoire parfaitement découpé sur fond transparent";
+      }
+      break;
+      
+    case 'facial-hair':
+      typeSpecificInstructions = "de la pilosité faciale uniquement (barbe, moustache, etc.), parfaitement découpée sur fond transparent";
+      break;
+  }
+  
+  // Construire le prompt complet
+  let prompt = `Generate a ${style} style ${typeSpecificInstructions}`;
+  
+  // Ajouter l'analyse de la base doll si disponible
+  if (dollAnalysis) {
+    prompt += ` that perfectly matches this character: ${dollAnalysis}`;
+  }
+  
+  // Ajouter le prompt de l'utilisateur
+  if (basePrompt) {
+    prompt += ` with these specifications: ${basePrompt}`;
+  }
+  
+  // Instructions techniques pour tous les types
+  prompt += `. Create this as a PNG with 100% transparent background, no shadows, no borders, showing ONLY the ${assetType} itself. The image must be perfectly pre-cropped with transparency all around it so it can be layered onto a character without any manual cropping needed. The final image should have absolutely no background elements or borders whatsoever, just the isolated ${assetType} asset on a transparent background.`;
+  
+  return prompt;
+}
 
 export const generateAssetWithAI = async (
   request: AIGenerationRequest,
@@ -149,20 +233,20 @@ export const generateAssetWithAI = async (
       dollAnalysis = await analyzeBaseDoll(request.baseDollUrl, apiKey);
     }
     
-    // Construire un prompt plus détaillé basé sur les paramètres et l'analyse
-    let enhancedPrompt = `Generate a ${request.style} style ${request.assetType}`;
+    // Générer un prompt optimisé pour le type d'asset
+    const enhancedPrompt = generateAssetTypePrompt(
+      request.assetType,
+      request.assetSubType,
+      request.prompt,
+      request.style,
+      dollAnalysis?.description
+    );
     
-    if (dollAnalysis?.description) {
-      enhancedPrompt += ` that matches the following character: ${dollAnalysis.description}`;
-    }
+    toast("Génération en cours", {
+      description: "Création de l'asset avec DALL-E..."
+    });
     
-    if (request.prompt) {
-      enhancedPrompt += ` with these specifications: ${request.prompt}`;
-    }
-    
-    if (request.assetType !== 'base-doll') {
-      enhancedPrompt += `. Create this as a transparent PNG with no background, showing ONLY the ${request.assetType} itself with complete transparency around it, so it can be perfectly layered on top of a character. Make sure there is no background or border at all. Create it as if it's already properly cropped.`;
-    }
+    console.log("Prompt DALL-E optimisé:", enhancedPrompt);
 
     // Configuration pour DALL-E
     const payload = {
@@ -172,8 +256,6 @@ export const generateAssetWithAI = async (
       size: "1024x1024",
       response_format: "b64_json" // Utiliser b64_json au lieu de URL pour éviter les problèmes CORS
     };
-
-    console.log("Envoi de la requête à l'API DALL-E:", payload);
 
     // Appel à l'API
     const response = await fetch(AI_API_ENDPOINT, {
@@ -197,24 +279,41 @@ export const generateAssetWithAI = async (
     const base64Data = data.data[0].b64_json;
     const imageUrl = `data:image/png;base64,${base64Data}`;
 
+    // Déterminer le Z-index approprié
+    const zIndex = getAssetZIndex(request.assetType, request.assetSubType);
+    
+    // Extraction des points d'ancrage et positionnement
+    const positioning = dollAnalysis?.positioning || {
+      suggestedX: 250,
+      suggestedY: 300,
+      suggestedScale: 0.5
+    };
+    
+    // Tags basés sur le type d'asset
+    const assetTags = ["ai-generated", request.style, request.assetType];
+    if (request.assetSubType) {
+      assetTags.push(request.assetSubType);
+    }
+    assetTags.push("transparent");
+    
+    // Générer un nom d'asset descriptif
+    const assetName = `IA ${request.assetType}${request.assetSubType ? ' ' + request.assetSubType : ''} - ${new Date().toLocaleDateString()}`;
+
     // Conversion de l'asset généré au format attendu par l'application
     const newAsset: Asset = {
       id: uuidv4(),
-      name: `IA ${request.assetType} - ${new Date().toLocaleDateString()}`,
+      name: assetName,
       type: request.assetType,
+      subType: request.assetSubType,
       style: request.style,
       url: imageUrl,
       thumbnailUrl: imageUrl,
-      tags: ["ia", request.style, request.assetType, "transparent"],
+      tags: assetTags,
       colors: [],
       dateCreated: new Date().toISOString(),
       dateModified: new Date().toISOString(),
-      // Ajouter les informations de positionnement si disponibles
-      positioning: dollAnalysis?.positioning || {
-        suggestedX: 150,
-        suggestedY: 150,
-        suggestedScale: 0.5
-      }
+      positioning: positioning,
+      zIndex: zIndex
     };
     
     console.log("Asset généré avec succès");

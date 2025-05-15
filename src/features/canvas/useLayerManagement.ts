@@ -1,8 +1,8 @@
-
 import { useState, useCallback } from 'react';
 import { Canvas, Object as FabricObject } from 'fabric';
 import { v4 as uuidv4 } from 'uuid';
 import { Layer } from './types';
+import { toast } from 'sonner';
 
 export const useLayerManagement = (fabricCanvas: Canvas | null) => {
   const [layers, setLayers] = useState<Layer[]>([]);
@@ -73,6 +73,19 @@ export const useLayerManagement = (fabricCanvas: Canvas | null) => {
     } else {
       return;
     }
+    
+    // Check z-index logic to ensure we're not violating layering rules
+    const currentZIndex = (newLayers[index].object as any).data?.zIndex || 0;
+    const targetZIndex = (newLayers[newIndex].object as any).data?.zIndex || 0;
+    
+    // If we're trying to move an object with a lower z-index above an object with a higher z-index
+    // (or vice versa), warn the user but still allow it
+    if ((direction === 'up' && currentZIndex < targetZIndex) || 
+        (direction === 'down' && currentZIndex > targetZIndex)) {
+      toast.warning("Attention", {
+        description: "Cet ordre de calques n'est pas standard et pourrait causer des problèmes d'affichage.",
+      });
+    }
 
     // Swap layers
     [newLayers[index], newLayers[newIndex]] = [newLayers[newIndex], newLayers[index]];
@@ -98,6 +111,9 @@ export const useLayerManagement = (fabricCanvas: Canvas | null) => {
 
   // Add a new layer
   const addLayer = useCallback((name: string, type: string, object: FabricObject) => {
+    // Get z-index from object metadata if it exists
+    const zIndex = (object as any).data?.zIndex || 0;
+    
     const newLayer: Layer = {
       id: uuidv4(),
       name,
@@ -107,10 +123,39 @@ export const useLayerManagement = (fabricCanvas: Canvas | null) => {
       object
     };
 
-    setLayers(prev => [...prev, newLayer]);
+    // Insert the new layer at the correct position based on z-index
+    setLayers(prev => {
+      const newLayers = [...prev];
+      
+      // Find the right position to insert the new layer based on z-index
+      let insertIndex = newLayers.length;
+      for (let i = 0; i < newLayers.length; i++) {
+        const layerZIndex = (newLayers[i].object as any).data?.zIndex || 0;
+        if (zIndex < layerZIndex) {
+          insertIndex = i;
+          break;
+        }
+      }
+      
+      // Insert the new layer at the correct position
+      newLayers.splice(insertIndex, 0, newLayer);
+      return newLayers;
+    });
+    
     setActiveLayer(newLayer.id);
     
     return newLayer;
+  }, []);
+
+  // Sort layers by z-index
+  const sortLayersByZIndex = useCallback(() => {
+    setLayers(prev => {
+      return [...prev].sort((a, b) => {
+        const aZIndex = (a.object as any).data?.zIndex || 0;
+        const bZIndex = (b.object as any).data?.zIndex || 0;
+        return aZIndex - bZIndex;
+      });
+    });
   }, []);
 
   // Clear all layers
@@ -129,6 +174,7 @@ export const useLayerManagement = (fabricCanvas: Canvas | null) => {
     deleteLayer,
     moveLayer,
     addLayer,
+    sortLayersByZIndex,
     clearLayers,
   };
 };

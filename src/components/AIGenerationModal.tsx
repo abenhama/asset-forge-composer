@@ -43,14 +43,11 @@ const AIGenerationModal = ({ open, onOpenChange, baseDoll, onGenerate }: AIGener
 
     setIsGenerating(true);
     
-    toast("Analyse en cours...", {
-      description: "Analyse du personnage de base avant la génération de l'asset...",
-    });
-    
     try {
       const asset = await generateAssetWithAI(
         {
           assetType: data.assetType,
+          assetSubType: data.assetSubType,
           prompt: data.prompt,
           style: data.style,
           baseDollUrl: baseDoll.url,
