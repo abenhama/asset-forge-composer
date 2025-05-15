@@ -17,9 +17,10 @@ import { toast } from 'sonner';
 
 interface AssetsSidebarProps {
   onSelectAsset: (asset: Asset) => void;
+  currentAssets?: Asset[]; // Add the currentAssets prop as optional
 }
 
-const AssetsSidebar: React.FC<AssetsSidebarProps> = ({ onSelectAsset }) => {
+const AssetsSidebar: React.FC<AssetsSidebarProps> = ({ onSelectAsset, currentAssets = [] }) => {
   const [activeTab, setActiveTab] = React.useState<AssetType>('base-doll');
   const [userTab, setUserTab] = useState<'assets' | 'saves'>('assets');
   const [userAssets, setUserAssets] = useState<Asset[]>([]);
@@ -49,6 +50,11 @@ const AssetsSidebar: React.FC<AssetsSidebarProps> = ({ onSelectAsset }) => {
       description: "Le chargement des personnages sauvegardés sera bientôt disponible.",
     });
     // Dans une implémentation complète, on chargerait le personnage dans le canvas
+  };
+
+  // Check if an asset is already in the canvas to prevent duplicates
+  const isAssetInCanvas = (asset: Asset) => {
+    return currentAssets.some(a => a.id === asset.id);
   };
 
   return (
@@ -100,7 +106,9 @@ const AssetsSidebar: React.FC<AssetsSidebarProps> = ({ onSelectAsset }) => {
                     {getAssetsByType(type).map((asset) => (
                       <div
                         key={asset.id}
-                        className="border rounded-md overflow-hidden cursor-pointer hover:border-primary transition-colors"
+                        className={`border rounded-md overflow-hidden cursor-pointer hover:border-primary transition-colors ${
+                          isAssetInCanvas(asset) ? 'bg-secondary/30 border-primary' : ''
+                        }`}
                         onClick={() => onSelectAsset(asset)}
                       >
                         <div className="h-20 bg-secondary/50 flex items-center justify-center p-1">
