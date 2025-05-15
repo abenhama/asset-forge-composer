@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, X } from 'lucide-react';
+import { Search, Filter, X, Trash2 } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,49 +12,74 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Asset, AssetType, AssetStyle } from "@/types";
 import { mockAssets } from "@/data/mockData";
+import { storageService } from "@/utils/storageService";
+import { toast } from "sonner";
 
 const AssetGallery = () => {
-  const [assets, setAssets] = useState<Asset[]>(mockAssets);
-  const [filteredAssets, setFilteredAssets] = useState<Asset[]>(mockAssets);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [filteredAssets, setFilteredAssets] = useState<Asset[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [assetTypeFilter, setAssetTypeFilter] = useState<AssetType | 'all'>('all');
   const [styleFilter, setStyleFilter] = useState<AssetStyle | 'all'>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
+
+  // Charger les assets
+  useEffect(() => {
+    const loadAssets = () => {
+      const userAssets = storageService.getUploadedAssets();
+      setAssets([...mockAssets, ...userAssets]);
+      applyFilters([...mockAssets, ...userAssets], searchQuery, assetTypeFilter, styleFilter);
+    };
+    
+    loadAssets();
+  }, []);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
-  }, []);
+    applyFilters(assets, query, assetTypeFilter, styleFilter);
+  }, [assets, assetTypeFilter, styleFilter]);
 
-  const applyFilters = useCallback(() => {
-    let result = assets;
+  const applyFilters = useCallback((assetList: Asset[], query: string, typeFilter: AssetType | 'all', style: AssetStyle | 'all') => {
+    let result = assetList;
     
     // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+    if (query) {
+      const searchQuery = query.toLowerCase();
       result = result.filter(asset => 
-        asset.name.toLowerCase().includes(query) || 
-        asset.tags.some(tag => tag.toLowerCase().includes(query))
+        asset.name.toLowerCase().includes(searchQuery) || 
+        asset.tags.some(tag => tag.toLowerCase().includes(searchQuery))
       );
     }
     
     // Apply type filter
-    if (assetTypeFilter !== 'all') {
-      result = result.filter(asset => asset.type === assetTypeFilter);
+    if (typeFilter !== 'all') {
+      result = result.filter(asset => asset.type === typeFilter);
     }
     
     // Apply style filter
-    if (styleFilter !== 'all') {
-      result = result.filter(asset => asset.style === styleFilter);
+    if (style !== 'all') {
+      result = result.filter(asset => asset.style === style);
     }
     
     setFilteredAssets(result);
-  }, [assets, searchQuery, assetTypeFilter, styleFilter]);
+  }, []);
 
   useEffect(() => {
-    applyFilters();
-  }, [searchQuery, assetTypeFilter, styleFilter, applyFilters]);
+    applyFilters(assets, searchQuery, assetTypeFilter, styleFilter);
+  }, [searchQuery, assetTypeFilter, styleFilter, assets, applyFilters]);
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -76,6 +101,56 @@ const AssetGallery = () => {
         {type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
       </span>
     );
+  };
+  
+  const handleDeleteAsset = (asset: Asset) => {
+    // Vérifier si c'est un asset par défaut (mockAsset)
+    const isMockAsset = mockAssets.some(mockAsset => mockAsset.id === asset.id);
+    if (isMockAsset) {
+      toast.error("Action impossible", {
+        description: "Impossible de supprimer les assets par défaut du système.",
+      });
+      return;
+    }
+    
+    setAssetToDelete(asset);
+  };
+  
+  const confirmDeleteAsset = () => {
+    if (!assetToDelete) return;
+    
+    // Vérifier si l'asset est utilisé par des personnages
+    const isUsed = storageService.isAssetUsedByCharacters(assetToDelete.id);
+    
+    if (isUsed) {
+      const characters = storageService.getCharactersUsingAsset(assetToDelete.id);
+      toast.warning("Asset utilisé", {
+        description: `Cet asset est utilisé par ${characters.length} personnage(s). La suppression peut affecter ces personnages.`,
+      });
+    }
+    
+    // Supprimer l'asset
+    storageService.deleteAsset(assetToDelete.id);
+    
+    // Mettre à jour la liste des assets
+    const updatedAssets = [...mockAssets, ...storageService.getUploadedAssets()];
+    setAssets(updatedAssets);
+    applyFilters(updatedAssets, searchQuery, assetTypeFilter, styleFilter);
+    
+    toast.success("Asset supprimé", {
+      description: "L'asset a été supprimé avec succès.",
+    });
+    
+    // Réinitialiser l'asset à supprimer
+    setAssetToDelete(null);
+  };
+
+  const cancelDeleteAsset = () => {
+    setAssetToDelete(null);
+  };
+  
+  const isUserAsset = (asset: Asset): boolean => {
+    return !mockAssets.some(mockAsset => mockAsset.id === asset.id);
   };
 
   return (
@@ -170,11 +245,26 @@ const AssetGallery = () => {
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                   <Button variant="secondary" size="sm">Aperçu</Button>
                   <Button variant="secondary" size="sm">Utiliser</Button>
+                  {isUserAsset(asset) && (
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteAsset(asset);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
               <div className="p-3">
                 <div className="mb-2">
                   {renderTypeBadge(asset.type)}
+                  {isUserAsset(asset) && (
+                    <Badge variant="outline" className="ml-2 text-xs">Personnalisé</Badge>
+                  )}
                 </div>
                 <h3 className="font-medium text-sm truncate" title={asset.name}>
                   {asset.name}
@@ -204,6 +294,33 @@ const AssetGallery = () => {
           </div>
         )}
       </div>
+      
+      {/* Dialogue de confirmation de suppression */}
+      <AlertDialog open={!!assetToDelete} onOpenChange={open => !open && cancelDeleteAsset()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer cet asset ?
+              {assetToDelete && storageService.isAssetUsedByCharacters(assetToDelete.id) && (
+                <p className="mt-2 text-amber-500 font-medium">
+                  Attention : Cet asset est utilisé par des personnages sauvegardés.
+                  La suppression peut affecter l'apparence de ces personnages.
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteAsset}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

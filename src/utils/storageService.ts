@@ -82,5 +82,21 @@ export const storageService = {
     const assets = storageService.getUploadedAssets();
     const filteredAssets = assets.filter(a => a.id !== id);
     localStorage.setItem(ASSETS_KEY, JSON.stringify(filteredAssets));
+  },
+  
+  // Vérifier si un asset est utilisé par des personnages sauvegardés
+  isAssetUsedByCharacters: (assetId: string): boolean => {
+    const characters = storageService.getSavedCharacters();
+    return characters.some(character => 
+      character.layers.some(layer => layer.assetId === assetId)
+    );
+  },
+  
+  // Obtenir tous les personnages qui utilisent un asset spécifique
+  getCharactersUsingAsset: (assetId: string): SavedCharacter[] => {
+    const characters = storageService.getSavedCharacters();
+    return characters.filter(character => 
+      character.layers.some(layer => layer.assetId === assetId)
+    );
   }
 };
