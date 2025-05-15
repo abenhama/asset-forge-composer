@@ -1,6 +1,6 @@
 
 import { Canvas, Object as FabricObject } from 'fabric';
-import { Asset, AssetType, AssetSubType, AssetAnchorPoints } from '@/types';
+import { Asset, AssetType, AssetSubType, AssetAnchorPoints } from '@/types/assets';
 
 export interface Layer {
   id: string;
